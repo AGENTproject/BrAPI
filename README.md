@@ -14,7 +14,7 @@ implemented calls are:
 ## AGENT portal database backend
 This will comprise
 - [BrAPI-Genotyping/Samples](https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification/BrAPI-Genotyping)
-- [BrAPI-Germplasm/Germplasm]8https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification/BrAPI-Germplasm/Germplasm])
+- [BrAPI-Germplasm/Germplasm](https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification/BrAPI-Germplasm/Germplasm)
 - [BrAPI-Phenotyping](https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification/BrAPI-Phenotyping)
 
 #
