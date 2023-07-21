@@ -6,10 +6,10 @@ Implementation of breeding API v2.1 for AGENT portal backend
 
 implemented calls are:
 
-https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/serverinfo
-https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/commoncropnames
-https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/variants
-https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/allelematrix
+- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/serverinfo
+- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/commoncropnames
+- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/variants
+- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/allelematrix
 
 ## AGENT portal database backend
 This will comprise
