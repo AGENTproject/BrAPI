@@ -1,7 +1,7 @@
 # Project setup - Branch DEV
 
 ## 1. Create a virtual env on linux system
-`virtualenv -p /usr/bin/python3.9 .agent-env`
+`virtualenv .agent-env`
 
 ## 2. Activate venv
 ### Linux
