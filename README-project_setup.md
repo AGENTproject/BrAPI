@@ -4,9 +4,11 @@
 `virtualenv -p /usr/bin/python3.9 .agent-env`
 
 ## 2. Activate venv
+### Linux
 `source .agent-env/bin/activate`
-
-## 3. Install depencies
+### Windows
+`source .agent-env/Script/activate`
+## 3. Install dependecies
 `pip install -r requirements.txt`
 
 ## 4. Set the environment values for the database connection
