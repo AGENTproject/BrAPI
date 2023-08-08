@@ -1,5 +1,5 @@
 # BrAPI
-Implementation of breeding API v2.1 for AGENT portal backend
+Implementation of [breeding API v2.1](https://brapi.org/specification) for AGENT portal backend
 ## DivBrowse backend
 
 [DivBrowse backend](https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/) provide already the calls
