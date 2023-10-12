@@ -24,6 +24,42 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 def index():
     return render_template("index.html")
 
+@app.route("/serviceinfo")
+def service_info():
+    output = {
+            "@context": [
+                "https://brapi.org/jsonld/context/metadata.jsonld"
+            ],
+            "metadata": {
+                "datafiles": [],
+                "pagination": None,
+                "status": [
+                    {
+                        "message": "Request accepted, response successful",
+                        "messageType": "INFO"
+                    }
+                ]
+            },
+            "result": {
+                "calls": [
+                    {
+                        "contentTypes": ["application/json"],
+                        "dataTypes": ["application/json"],
+                        "methods": ["GET",],
+                        "service": "serverinfo",
+                        "versions": ["2.1"]
+                    },
+                    {
+                        "contentTypes": ["application/json"],
+                        "dataTypes": ["application/json"],
+                        "methods": ["GET",],
+                        "service": "samples",
+                        "versions": ["2.1"]
+                    }
+                ] 
+            } 
+        } 
+    return output
 
 @app.route("/samples")
 def get_samples():
