@@ -1,4 +1,5 @@
 from flask import Blueprint
+import json
 import oracledb
 import os
 
@@ -14,8 +15,19 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 def index():
     return "brapi on the frame of agent project "
 
-@brapi_bp.route('/serverinfo')
+@brapi_bp.route('/serverinfo',methods = ['GET', 'OPTIONS'])
 def server_info():
+    #serverinfo = config.get('brapi', {}).get('serverinfo', {})
+    serverinfo = os.environ.get('brapi',{})
+
+    server_name = serverinfo.get('server_name', None)
+    server_description = serverinfo.get('server_description', None)
+    organization_name = serverinfo.get('organization_name', None)
+    organization_url = serverinfo.get('organization_url', None)
+    location = serverinfo.get('location', None)
+    contact_email = serverinfo.get('contact_email', None)
+    documentation_url = serverinfo.get('documentation_url', None)
+    
     output = {
             "@context": [
                 "https://brapi.org/jsonld/context/metadata.jsonld"
@@ -46,7 +58,14 @@ def server_info():
                         "service": "samples",
                         "versions": ["2.1"]
                     }
-                ] 
+                ],
+                "contactEmail": contact_email,
+                "documentationURL": documentation_url,
+                "location": location,
+                "organizationName": organization_name,
+                "organizationURL": organization_url,
+                "serverDescription": server_description,
+                "serverName": server_name
             } 
         } 
     return output
@@ -68,7 +87,7 @@ def get_samples():
             sql = """SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
             for r in cursor.execute(sql):
                 samples.append(
-                    {'additionalInfo': r[0], 'column': r[1], 'externalReferences': r[2], 'germplasmDbId': r[3], 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': r[10], 'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]})
+                    {'additionalInfo': r[0], 'column': r[1], 'externalReferences': json.loads(r[2]) if r[2] else None, 'germplasmDbId': r[3], 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId':  str(r[10]), 'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]})
     res_total_count = len(samples)
     
     return {
@@ -98,6 +117,6 @@ def get_sample_by_reference(reference_id):
             sql = """SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
             for r in cursor.execute(sql):
                 if r[2] == reference_id:
-                    sample = {'additionalInfo': r[0], 'column': r[1], 'externalReferences': r[2], 'germplasmDbId': r[3], 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': r[10],
+                    sample = {'additionalInfo': r[0], 'column': r[1], 'externalReferences': [r[2]], 'germplasmDbId': r[3], 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]),
                               'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]}
     return sample
