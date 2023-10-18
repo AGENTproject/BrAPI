@@ -14,8 +14,8 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 def index():
     return "brapi on the frame of agent project "
 
-@brapi_bp.route('/serviceinfo')
-def service_info():
+@brapi_bp.route('/serverinfo')
+def server_info():
     output = {
             "@context": [
                 "https://brapi.org/jsonld/context/metadata.jsonld"
