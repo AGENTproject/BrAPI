@@ -9,6 +9,8 @@ The [BrAPI modul](https://wiki.brapi.org/images/f/f7/BrAPI_Domains.png) to be im
 
 ## BrAPI implementation by DivBrowse backend
 
+### Barley panel ###
+
 [DivBrowse backend](https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/) provide already the calls
 
 implemented calls are:
@@ -17,12 +19,27 @@ implemented calls are:
 - https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/commoncropnames
 - https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/variants
 - https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/allelematrix
+###
+
+### Wheat panel
+
+- https://divbrowse.ipk-gatersleben.de/agent_wheat/brapi/v2/serverinfo
+- https://divbrowse.ipk-gatersleben.de/agent_wheat/brapi/v2/commoncropnames
+- https://divbrowse.ipk-gatersleben.de/agent_wheat/brapi/v2/variants
+- https://divbrowse.ipk-gatersleben.de/agent_wheat/brapi/v2/allelematrix
+###
+##
 
 ## BrAPI implementation by AGENT database backend
+
+### Barley and Wheat panel
 
 - [AGENT database backend](https://agent.ipk-gatersleben.de/genotyping/brapi/v2/)
 
 implemented calls are:
 
 - https://agent.ipk-gatersleben.de/genotyping/brapi/v2/samples
+
+###
+##
 #
