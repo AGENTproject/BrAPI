@@ -11,10 +11,6 @@ The [BrAPI modul](https://wiki.brapi.org/images/f/f7/BrAPI_Domains.png) to be im
 
 ### Barley panel ###
 
-[DivBrowse backend](https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/) provide already the calls
-
-implemented calls are:
-
 - https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/serverinfo
 - https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/commoncropnames
 - https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/variants
