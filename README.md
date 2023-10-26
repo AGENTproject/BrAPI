@@ -11,10 +11,10 @@ The [BrAPI modul](https://wiki.brapi.org/images/f/f7/BrAPI_Domains.png) to be im
 
 ### Barley panel ###
 
-- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/serverinfo
-- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/commoncropnames
-- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/variants
-- https://divbrowse.ipk-gatersleben.de/agent/brapi/v2/allelematrix
+- https://divbrowse.ipk-gatersleben.de/agent_barley/brapi/v2/serverinfo
+- https://divbrowse.ipk-gatersleben.de/agent_barley/brapi/v2/commoncropnames
+- https://divbrowse.ipk-gatersleben.de/agent_barley/brapi/v2/variants
+- https://divbrowse.ipk-gatersleben.de/agent_barley/brapi/v2/allelematrix
 ###
 
 ### Wheat panel
