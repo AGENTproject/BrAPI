@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template
+from flask import Blueprint
 
 admin_bp = Blueprint('admin_bp', __name__)
 
 
 @admin_bp.route('/')
 def index():
-    return render_template('index.html')
+    return "brapi on the frame of agent project"
