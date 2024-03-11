@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template
 import oracledb
 from flask import request
+import math
 import os
 
 brapi_bp = Blueprint('brapi_bp', __name__,url_prefix='/genotyping/brapi/v2')
@@ -79,8 +80,8 @@ def get_samples():
     res_status = []
     
      # Get page size and page number from query parameters
-    res_page_size = int(request.args.get('pageSize', 10))
-    res_current_page = int(request.args.get('currentPage', 1))
+    res_page_size = max(int(request.args.get('pageSize', 1000)),1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))),0)
 
     samples = []
     total_count = 0
@@ -91,7 +92,7 @@ def get_samples():
                 samples.append(
                     {'additionalInfo': r[0], 'column': r[1], 'externalReferences': [{"referenceId":r[2],"referenceSource":  ""}], 'germplasmDbId': r[3], 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId':  str(r[10]), 'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]})
     res_total_count = len(samples)
-    res_total_pages = (total_count + res_page_size - 1) // res_page_size
+    res_total_pages = math.ceil(res_total_count / res_page_size )
 
     # Apply pagination to samples
     start_index = (res_current_page - 1) * res_page_size
@@ -113,7 +114,7 @@ def get_samples():
           },
         "totalcount": total_count,
         "result": {
-            "data": paginated_samples
+            "data": samples
         }
     }
 
@@ -128,4 +129,19 @@ def get_sample_by_reference(reference_id):
                 if r[2] == reference_id or str(r[10]) == reference_id:
                     sample = {'additionalInfo': r[0], 'column': r[1], 'externalReferences':[{"referenceId":r[2],"referenceSource":  ""}], 'germplasmDbId': str("r[3]"), 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]),
                               'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]}
-    return sample
+    return  {
+        "metadata": {
+            "datafiles": [],
+            "status": [],
+            "pagination": {
+                "pageSize": 0,  
+                "totalCount": 1,
+                "totalPages": 1,
+                "currentPage": 0
+            }
+        },
+        "totalcount": 1,
+        "result": {
+            "data": sample
+        }
+    }
