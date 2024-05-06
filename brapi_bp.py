@@ -59,6 +59,13 @@ def server_info():
                     "methods": ["GET", ],
                     "service": "samples",
                     "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "callsets",
+                    "versions": ["2.1"]
                 }
             ],
             "contactEmail": contact_email,
@@ -160,4 +167,114 @@ def get_sample_by_reference_id(reference_id):
         }), 200
     else:
         return jsonify("sample not found!"), 404
+
+@brapi_bp.route('/callsets')
+def get_callsets():
+    callSetDbId = request.args.get('callSetDbId')
+    if callSetDbId:
+        callSet = None
+    
+
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key not in ['pageSize', 'currentPage', 'page']:
+            if where_clause:
+                where_clause += " AND "
+            if key == 'callSetDbId':
+                 where_clause += f'"samplePUI" = \'{value}\''
+            else:
+                 where_clause += f'"{key}" = \'{value}\''
+
+    callSets = []
+    
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT "samplePUI", "sampleDbId", "sampleTimestamp" FROM mv_brapi_samples"""
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+            cursor.execute(sql)
+            for r in cursor.fetchall():
+                callSet = {
+                    'callSetDbId': str(r[0]),  # Mapping samplePUI to callSetDbId
+                    'sampleDbId': r[1],
+                    'created': r[2],
+                    'updated': r[2],  # Assuming the sampleTimestamp for both created and updated dates
+                    'additionalInfo': {},  # If there are additional attributes to include
+                    'externalReferences': [],  # Assuming how to handle external references if available
+                    'variantSetDbIds': []  # Placeholder if there's relevant data to link
+                }
+                callSets.append(callSet)
+
+    res_total_count = len(callSets)
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    # Apply pagination
+    start_index = res_current_page * res_page_size
+    end_index = min(start_index + res_page_size, res_total_count)
+    paginated_callSets = callSets[start_index:end_index]
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": paginated_callSets
+        }
+    })
+
+@brapi_bp.route('/callsets/<reference_id>')
+def get_callset_by_reference_id(reference_id):
+    callSet = None
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = """SELECT "samplePUI", "sampleDbId", "sampleTimestamp" FROM mv_brapi_samples"""
+            for r in cursor.execute(sql):
+               if str(r[0]) == reference_id:
+                    callSet = {
+                        'callSetDbId': str(r[0]),
+                        'samplePUI': r[0],
+                        'sampleDbId': str(r[1]),
+                        'created': r[2],
+                        'updated': r[2],
+                        'additionalInfo': {},
+                        'externalReferences': [],
+                        'variantSetDbIds': []
+                    }
+                    
+
+    if callSet:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": callSet
+        }), 200
+    else:
+        return jsonify("Callset not found!"), 404
+    
 
