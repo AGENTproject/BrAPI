@@ -30,7 +30,10 @@ The [BrAPI modul](https://wiki.brapi.org/images/f/f7/BrAPI_Domains.png) to be im
 
 ### Barley and Wheat panel
 
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/serverinfo
 - https://agent.ipk-gatersleben.de/genotyping/brapi/v2/samples
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/callsets
+
 
 ###
 ##
