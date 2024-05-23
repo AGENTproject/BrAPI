@@ -80,7 +80,7 @@ def server_info():
     return jsonify(output)
 
 
-@brapi_bp.route('/samples')
+@brapi_bp.route('samples')
 def get_samples():
     res_context = None
     res_datafiles = []
@@ -133,6 +133,61 @@ def get_samples():
         },
         "result": {
             "data": paginated_samples
+        }
+    })
+@brapi_bp.route('studies')
+def get_studies():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            where_clause += f'"{key}" = \'{value}\''
+
+    studies = []
+
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT  "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "STARTDATE", "ENDDATE", "LOCATIONNAME", "STUDYCODE", "STUDYDESCRIPTION", "TRIALDBID" FROM V007_STUDY_BRAPI"""
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+            for r in cursor.execute(sql):
+                study = {
+                    'STUDYDBID': r[0], 'STUDYNAME': r[1], 'ADDITIONALINFO': r[2], 'COMMONCROPNAME': r[3], 'STARTDATE': r[4], 'ENDDATE': r[5], 'LOCATIONNAME': r[6], 'STUDYCODE': r[7], 'STUDYDESCRIPTION': r[8], 'TRIALDBID': r[9]}
+                studies.append(study)
+
+    res_total_count = len(studies)
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    # Apply pagination to samples
+    start_index = res_current_page * res_page_size
+    end_index = min(start_index + res_page_size, res_total_count)
+    paginated_studies = studies[start_index:end_index]
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": paginated_studies
         }
     })
 
