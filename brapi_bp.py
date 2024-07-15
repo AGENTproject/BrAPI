@@ -4,6 +4,9 @@ from flask import request
 import math
 import os
 
+
+
+
 brapi_bp = Blueprint('brapi_bp', __name__, url_prefix='/genotyping/brapi/v2')
 
 DB_HOST = os.getenv("DB_HOST")
@@ -12,6 +15,8 @@ DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
+
+# Routes and their functions
 @brapi_bp.route('/')
 def index():
     return render_template('index.html')
@@ -66,6 +71,20 @@ def server_info():
                     "methods": ["GET", ],
                     "service": "callsets",
                     "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "attributes",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "attributevalues",
+                    "versions": ["2.1"]
                 }
             ],
             "contactEmail": contact_email,
@@ -78,6 +97,13 @@ def server_info():
         }
     }
     return jsonify(output)
+
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
 
 
 @brapi_bp.route('samples')
@@ -97,19 +123,36 @@ def get_samples():
         if key != 'pageSize' and key != 'currentPage' and key != 'page':
             if where_clause:
                 where_clause += " AND "
-            where_clause += f'"{key}" = \'{value}\''
+            if is_number(value):
+                where_clause += f'"{key}" = {value}'
+            else:
+                where_clause += f'"{key}" = \'{value}\''
 
     samples = []
-
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
-            for r in cursor.execute(sql):
-                sample = {
-                    'additionalInfo': r[0], 'column': r[1], 'externalReferences': [{"referenceId": r[2], "referenceSource": ""}], 'germplasmDbId': r[3], 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]), 'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]}
-                samples.append(sample)
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    sample = {
+                        'additionalInfo': r[0], 'column': r[1], 'externalReferences': [{"referenceId": r[2], "referenceSource": ""}], 'germplasmDbId': str(r[3]), 'observationUnitDbId': str(r[4]), 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]), 'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]
+                    }
+                    samples.append(sample)
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        samples = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        samples = []
 
     res_total_count = len(samples)
     res_total_pages = math.ceil(res_total_count / res_page_size)
@@ -135,63 +178,6 @@ def get_samples():
             "data": paginated_samples
         }
     })
-@brapi_bp.route('studies')
-def get_studies():
-    res_context = None
-    res_datafiles = []
-    res_status = []
-
-    # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
-
-    # Construct the WHERE clause based on query parameters
-    where_clause = ""
-    query_parameters = request.args.to_dict()
-    for key, value in query_parameters.items():
-        if key != 'pageSize' and key != 'currentPage' and key != 'page':
-            if where_clause:
-                where_clause += " AND "
-            where_clause += f'"{key}" = \'{value}\''
-
-    studies = []
-
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT  "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "STARTDATE", "ENDDATE", "LOCATIONNAME", "STUDYCODE", "STUDYDESCRIPTION", "TRIALDBID" FROM V007_STUDY_BRAPI"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
-            for r in cursor.execute(sql):
-                study = {
-                    'STUDYDBID': r[0], 'STUDYNAME': r[1], 'ADDITIONALINFO': r[2], 'COMMONCROPNAME': r[3], 'STARTDATE': r[4], 'ENDDATE': r[5], 'LOCATIONNAME': r[6], 'STUDYCODE': r[7], 'STUDYDESCRIPTION': r[8], 'TRIALDBID': r[9]}
-                studies.append(study)
-
-    res_total_count = len(studies)
-    res_total_pages = math.ceil(res_total_count / res_page_size)
-
-    # Apply pagination to samples
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_studies = studies[start_index:end_index]
-
-    return jsonify({
-        "@context": res_context,
-        "metadata": {
-            "datafiles": res_datafiles,
-            "status": res_status,
-            "pagination": {
-                "pageSize": res_page_size,
-                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
-                "totalPages": res_total_pages,
-                "currentPage": res_current_page
-            }
-        },
-        "result": {
-            "data": paginated_studies
-        }
-    })
-
-
 
 @brapi_bp.route('/samples/<reference_id>')
 def get_sample_by_reference_id(reference_id):
@@ -223,13 +209,272 @@ def get_sample_by_reference_id(reference_id):
     else:
         return jsonify("sample not found!"), 404
 
+@brapi_bp.route('studies')
+def get_studies():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            where_clause += f'"{key}" = \'{value}\''
+
+    studies = []
+
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT  "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "STARTDATE", "ENDDATE", "LOCATIONNAME", "STUDYCODE", "STUDYDESCRIPTION", "TRIALDBID" FROM V007_STUDY_BRAPI"""
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+            for r in cursor.execute(sql):
+                study = {
+                    'STUDYDBID': r[0], 'STUDYNAME': r[1], 'ADDITIONALINFO': r[2], 'COMMONCROPNAME': r[3], 'STARTDATE': r[4], 'ENDDATE': r[5], 'LOCATIONNAME': r[6], 'STUDYCODE': r[7], 'STUDYDESCRIPTION': r[8], 'TRIALDBID': r[9]}
+                studies.append(study)
+    
+
+    res_total_count = len(studies)
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    # Apply pagination to samples
+    start_index = res_current_page * res_page_size
+    end_index = min(start_index + res_page_size, res_total_count)
+    paginated_studies = studies[start_index:end_index]
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": paginated_studies
+        }
+    })
+
+@brapi_bp.route('attributes')
+def get_attributes():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            if is_number(value):
+                 where_clause += f'"{key.upper()}" = \'{value}\'' 
+            else:
+                where_clause +=  f'"{key}" = \'{value}\''
+
+    attributes = []
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "ATTRIBUTEDBID", "ATTRIBUTENAME", "METHOD", "TRAIT", "ATTRIBUTECATEGORY", "ATTRIBUTEDESCRIPTION" FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    attribute = {
+                        'ATTRIBUTEDBID': r[0], 'ATTRIBUTENAME': r[1], 'METHOD': r[2], 'TRAIT': r[3], 'ATTRIBUTECATEGORY': r[4], 'ATTRIBUTEDESCRIPTION': r[5]}
+                    attributes.append(attribute)
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        attributes = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        attributes = []
+
+    res_total_count = len(attributes)
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    # Apply pagination to samples
+    start_index = res_current_page * res_page_size
+    end_index = min(start_index + res_page_size, res_total_count)
+    paginated_attributes = attributes[start_index:end_index]
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": paginated_attributes
+        }
+    })
+
+@brapi_bp.route('/attributes/<reference_id>')
+def get_attribute_by_reference_id(reference_id):
+    attribute = None
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = """SELECT "ATTRIBUTEDBID", "ATTRIBUTENAME", "METHOD", "TRAIT", "ATTRIBUTECATEGORY", "ATTRIBUTEDESCRIPTION" FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
+            for r in cursor.execute(sql):
+                if str(r[10]) == reference_id:
+                    attribute = {
+                        'ATTRIBUTEDBID': str(r[0]), 'ATTRIBUTENAME': str(r[1]), 'METHOD': str(r[2]), 'TRAIT': r[3], 'ATTRIBUTECATEGORY': r[4], 'ATTRIBUTEDESCRIPTION': r[5]}
+                    break
+
+    if attribute:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": attribute
+        }), 200
+    else:
+        return jsonify("attribute not found!"), 404
+    
+@brapi_bp.route('attributevalues')
+def get_attributevalues():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            if is_number(value):
+                 where_clause += f'"{key.upper()}" = \'{value}\''
+            else:
+                where_clause +=  f'"{key}" = \'{value}\''
+
+    attributevalues = []
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "ATTRIBUTENAME", "ATTRIBUTEVALUEDBID", "ADDITIONALINFO", "ATTRIBUTEDBID", "DETERMINEDDATE", "GERMPLASMDBID", "GERMPLASMNAME", "VALUE" FROM V011_TRAIT_VALUE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    attributevalue = {
+                        'ATTRIBUTENAME': r[0], 'ATTRIBUTEVALUEDBID': str(r[1]), 'ADDITIONALINFO': r[2], 'ATTRIBUTEDBID': str(r[3]), 'DETERMINEDDATE': r[4], 'GERMPLASMDBID': str(r[5]), 'GERMPLASMNAME': r[6], 'VALUE': r[7]}
+                    attributevalues.append(attributevalue)
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        attributevalues = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        attributevalues = []
+
+    res_total_count = len(attributevalues)
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    # Apply pagination to samples
+    start_index = res_current_page * res_page_size
+    end_index = min(start_index + res_page_size, res_total_count)
+    paginated_attributevalues = attributevalues[start_index:end_index]
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": paginated_attributevalues
+        }
+    })
+
+@brapi_bp.route('/attributevalues/<reference_id>')
+def get_attributevalue_by_reference_id(reference_id):
+    attributevalue = None
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = """SELECT "ATTRIBUTENAME", "ATTRIBUTEVALUEDBID", "ADDITIONALINFO", "ATTRIBUTEDBID", "DETERMINEDDATE", "GERMPLASMDBID", "GERMPLASMNAME", "VALUE" FROM V011_TRAIT_VALUE_BRAPI""" 
+            for r in cursor.execute(sql):
+                if str(r[10]) == reference_id:
+                    attributevalue = {
+                        'ATTRIBUTENAME': r[0], 'ATTRIBUTEVALUEDBID': str(r[1]), 'ADDITIONALINFO': r[2], 'ATTRIBUTEDBID': str(r[3]), 'DETERMINEDDATE': str(r[4]), 'GERMPLASMDBID': str(r[5]), 'GERMPLASMNAME': r[6], 'VALUE': r[7]}
+                    break
+
+    if attributevalue:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": attributevalue
+        }), 200
+    else:
+        return jsonify("attributevalue not found!"), 404
+
+
 @brapi_bp.route('/callsets')
 def get_callsets():
     callSetDbId = request.args.get('callSetDbId')
     if callSetDbId:
         callSet = None
     
-
     res_context = None
     res_datafiles = []
     res_status = []
@@ -251,17 +496,19 @@ def get_callsets():
                  where_clause += f'"{key}" = \'{value}\''
 
     callSets = []
-    
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT "samplePUI", "sampleDbId", "sampleTimestamp" FROM mv_brapi_samples"""
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+         with connection.cursor() as cursor:
+            sql = f"""SELECT "samplePUI", "sampleDbId", "sampleTimestamp", "sampleName" AS "callSetName", "studyDbId" FROM mv_brapi_samples"""
             if where_clause:
                 sql += f" WHERE {where_clause}"
             cursor.execute(sql)
             for r in cursor.fetchall():
                 callSet = {
-                    'callSetDbId': str(r[0]),  # Mapping samplePUI to callSetDbId
-                    'sampleDbId': r[1],
+                    'callSetDbId': str(r[0]), # Mapping samplePUI to callSetDbId
+                    'callSetName': r[3],
+                    'sampleDbId': str(r[1]),
+                    'studyDbId': r[4],
                     'created': r[2],
                     'updated': r[2],  # Assuming the sampleTimestamp for both created and updated dates
                     'additionalInfo': {},  # If there are additional attributes to include
@@ -270,6 +517,19 @@ def get_callsets():
                 }
                 callSets.append(callSet)
 
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        callSets = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        callSets = []
+    
     res_total_count = len(callSets)
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -300,13 +560,14 @@ def get_callset_by_reference_id(reference_id):
     callSet = None
     with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
         with connection.cursor() as cursor:
-            sql = """SELECT "samplePUI", "sampleDbId", "sampleTimestamp" FROM mv_brapi_samples"""
+            sql = """SELECT "samplePUI", "studyDbId", "sampleDbId", "sampleName" AS "callSetName", "sampleTimestamp" FROM mv_brapi_samples"""
             for r in cursor.execute(sql):
                if str(r[0]) == reference_id:
                     callSet = {
                         'callSetDbId': str(r[0]),
-                        'samplePUI': r[0],
+                        'callSetName': r[3],
                         'sampleDbId': str(r[1]),
+                        'studyDbId': r[4],
                         'created': r[2],
                         'updated': r[2],
                         'additionalInfo': {},
@@ -314,7 +575,6 @@ def get_callset_by_reference_id(reference_id):
                         'variantSetDbIds': []
                     }
                     
-
     if callSet:
         return jsonify({
             "metadata": {
