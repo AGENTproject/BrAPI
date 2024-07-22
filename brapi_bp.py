@@ -15,8 +15,44 @@ DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-
 # Routes and their functions
+
+FAO_STORAGE_CODES = {
+    "10":"Seed collection",
+    "11":"Short term",
+    "12":"Medium term",
+    "13":"Long term",
+    "20":"Field collection",
+    "30":"In vitro collection",
+    "40":"Cryopreserved collection",
+    "50":"DNA collection",
+    "99":"Other",
+}
+
+FAO_SAMPSTAT_CODES = {
+    100:"Wild",
+    110:"Natural",
+    120:"Semi-natural/wild",
+    130:"Semi-natural/sown",
+    200:"Weedy",
+    300:"Traditional cultivar/landrace",
+    400:"Breeding/research material",
+    410:"Breeder's line",
+    411:"Synthetic population",
+    412:"Hybrid",
+    413:"Founder stock/base population",
+    414:"Inbred line",
+    415:"Segregating population",
+    416:"Clonal selection",
+    420:"Genetic stock",
+    421:"Mutant",
+    422:"Cytogenetic stocks",
+    423:"Other genetic stocks",
+    500:"Advanced or improved cultivar",
+    600:"GMO",
+    999:"Other",
+}
+
 @brapi_bp.route('/')
 def index():
     return render_template('index.html')
@@ -178,6 +214,211 @@ def get_samples():
             "data": paginated_samples
         }
     })
+@brapi_bp.route('germplasm')
+def get_germplasm():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            where_clause += f'"{key}" = \'{value}\''
+
+    germplasms = []
+
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+            for r in cursor.execute(sql):
+                germplasm = {
+                    'commonCropName': r[0],
+                    'germplasmDbId': str(r[1]),
+                    'germplasmName': r[2],
+                    'germplasmPUI': r[3],
+                    'accessionNumber': r[4],
+                    'acquisitionDate': r[5],
+                    'countryOfOriginCode': r[7],
+                    'defaultDisplayName': r[2],
+                    'donors': [],
+                    'genus': r[10],
+                    'instituteCode': r[14],
+                    'pedigree': r[15],
+                    'species': r[16],
+                    'speciesAuthority': r[17],
+                    'storageTypes': [],
+                    'subtaxa': r[19],
+                    'subtaxaAuthority': r[20],
+                }
+                if r[6]:
+                    germplasm['biologicalStatusOfAccessionCode'] = str(r[6])
+                    germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES[r[6]]
+                else:
+                    germplasm['biologicalStatusOfAccessionCode'] = None
+                    germplasm['biologicalStatusOfAccessionDescription'] = None
+                {"donorAccessionNumber": r[8], "donorInstituteCode": r[9]}
+                if r[8] or r[9]:
+                    germplasm['donors'].append({"donorAccessionNumber": r[8], "donorInstituteCode": r[9]})
+                if r[11] and r[12] and r[13]:
+                    germplasm['germplasmOrigin'] = [{
+                        "coordinateUncertainty": r[11], 
+                        "coordinates": {
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [float(r[12]), float(r[13])],
+                            }, 
+                            "type": "Feature"
+                        }
+                    }]
+                else:
+                    germplasm['germplasmOrigin'] = []
+                if r[18]:
+                    for i in r[18].split(";"):
+                        germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
+                germplasms.append(germplasm)
+
+    res_total_count = len(germplasms)
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    # Apply pagination to germplasm
+    start_index = res_current_page * res_page_size
+    end_index = min(start_index + res_page_size, res_total_count)
+    paginated_samples = germplasms[start_index:end_index]
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": paginated_samples
+        }
+    })  
+    
+@brapi_bp.route('studies')
+def get_studies():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            where_clause += f'"{key.upper()}" = \'{value}\''
+    
+    print(where_clause)
+    
+    
+    
+    studies = []
+
+    # Get studies data
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+            print (sql)
+            for r in cursor.execute(sql):
+                study = {
+                    'studyDbId': r[0], 
+                    'studyName': r[1], 
+                    'additionalInfo': r[2], 
+                    'commonCropName': r[3], 
+                    'endDate': r[4], 
+                    'environmentParameters': [], 
+                    'locationName': r[5], 
+                    'startDate': r[6], 
+                    'studyCode': r[7], 
+                    'studyDescription': r[8], 
+                    'observationVariableDbIds': []
+                }
+                studies.append(study)
+
+    res_total_count = len(studies)
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    # Apply pagination to samples
+    start_index = res_current_page * res_page_size
+    end_index = min(start_index + res_page_size, res_total_count)
+    paginated_studies = studies[start_index:end_index]
+    
+    if paginated_studies:
+        # Build where clause for filtering by paginated data
+        where_clause = ""
+        for study in paginated_studies:
+            if where_clause:
+                where_clause += " OR "
+            where_clause += f'"STUDYDBID" = \'{study["studyDbId"]}\''
+            
+        # For every study in paginated data get environment parameters
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "STUDYDBID", "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
+                sql += f" WHERE {where_clause}"
+                for r in cursor.execute(sql):
+                    studyDbId = r[0]
+                    environmentParameter = {
+                        "parameterName": r[1], 
+                        "value": r[2]
+                    }
+                    for study in paginated_studies:
+                        if study["studyDbId"] == studyDbId:
+                            study['environmentParameters'].append(environmentParameter)
+            
+        # For every study in paginated data get observation variables
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "STUDYDBID", "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
+                sql += f" WHERE {where_clause}"
+                for r in cursor.execute(sql):
+                    studyDbId = r[0]
+                    observationVariableDbId = r[1]
+                    for study in paginated_studies:
+                        if study["studyDbId"] == studyDbId:
+                            study['observationVariableDbIds'].append(observationVariableDbId)
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": paginated_studies
+        }
+    })
 
 @brapi_bp.route('/samples/<reference_id>')
 def get_sample_by_reference_id(reference_id):
@@ -208,63 +449,148 @@ def get_sample_by_reference_id(reference_id):
         }), 200
     else:
         return jsonify("sample not found!"), 404
+        
 
-@brapi_bp.route('studies')
-def get_studies():
-    res_context = None
-    res_datafiles = []
-    res_status = []
 
-    # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
-
-    # Construct the WHERE clause based on query parameters
-    where_clause = ""
-    query_parameters = request.args.to_dict()
-    for key, value in query_parameters.items():
-        if key != 'pageSize' and key != 'currentPage' and key != 'page':
-            if where_clause:
-                where_clause += " AND "
-            where_clause += f'"{key}" = \'{value}\''
-
-    studies = []
-
+@brapi_bp.route('/studies/<reference_id>')
+def get_study_by_reference_id(reference_id):
+    study = None
+    
+    where_clause = f'"STUDYDBID" = \'{reference_id}\''
+    
     with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
         with connection.cursor() as cursor:
-            sql = f"""SELECT  "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "STARTDATE", "ENDDATE", "LOCATIONNAME", "STUDYCODE", "STUDYDESCRIPTION", "TRIALDBID" FROM V007_STUDY_BRAPI"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
+            sql = """SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
             for r in cursor.execute(sql):
-                study = {
-                    'STUDYDBID': r[0], 'STUDYNAME': r[1], 'ADDITIONALINFO': r[2], 'COMMONCROPNAME': r[3], 'STARTDATE': r[4], 'ENDDATE': r[5], 'LOCATIONNAME': r[6], 'STUDYCODE': r[7], 'STUDYDESCRIPTION': r[8], 'TRIALDBID': r[9]}
-                studies.append(study)
-    
+                if str(r[0]) == reference_id:
+                    study = {
+                        'studyDbId': r[0], 
+                        'studyName': r[1], 
+                        'additionalInfo': r[2], 
+                        'commonCropName': r[3], 
+                        'endDate': r[4], 
+                        'environmentParameters': [], 
+                        'locationName': r[5], 
+                        'startDate': r[6], 
+                        'studyCode': r[7], 
+                        'studyDescription': r[8], 
+                        'observationVariableDbIds': []
+                    }
+                    break
+                    
+    # Build where clause for filtering by paginated data
+    where_clause = f'"STUDYDBID" = \'{study["studyDbId"]}\''
+                    
+    # For every study in paginated data get environment parameters
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
+            sql += f" WHERE {where_clause}"
+            for r in cursor.execute(sql):
+                environmentParameter = {
+                    "parameterName": r[0], 
+                    "value": r[1]
+                }
+                study['environmentParameters'].append(environmentParameter)
+        
+    # For every study in paginated data get observation variables
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
+            sql += f" WHERE {where_clause}"
+            for r in cursor.execute(sql):
+                observationVariableDbId = r[0]
+                study['observationVariableDbIds'].append(observationVariableDbId)
 
-    res_total_count = len(studies)
-    res_total_pages = math.ceil(res_total_count / res_page_size)
+    if study:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": study
+        }), 200
+    else:
+        return jsonify("sample not found!"), 404
 
-    # Apply pagination to samples
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_studies = studies[start_index:end_index]
 
-    return jsonify({
-        "@context": res_context,
-        "metadata": {
-            "datafiles": res_datafiles,
-            "status": res_status,
-            "pagination": {
-                "pageSize": res_page_size,
-                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
-                "totalPages": res_total_pages,
-                "currentPage": res_current_page
-            }
-        },
-        "result": {
-            "data": paginated_studies
-        }
-    })
+@brapi_bp.route('/germplasm/<reference_id>')
+def get_germplasm_by_reference_id(reference_id):
+    germplasm = None
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with connection.cursor() as cursor:
+            sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
+            for r in cursor.execute(sql):
+                if str(r[1]) == reference_id:
+                    germplasm = {
+                        'commonCropName': r[0],
+                        'germplasmDbId': str(r[1]),
+                        'germplasmName': r[2],
+                        'germplasmPUI': r[3],
+                        'accessionNumber': r[4],
+                        'acquisitionDate': r[5],
+                        'countryOfOriginCode': r[7],
+                        'defaultDisplayName': r[2],
+                        'donors': [],
+                        'genus': r[10],
+                        'instituteCode': r[14],
+                        'pedigree': r[15],
+                        'species': r[16],
+                        'speciesAuthority': r[17],
+                        'storageTypes': [],
+                        'subtaxa': r[19],
+                        'subtaxaAuthority': r[20],
+                    }
+                    if r[6]:
+                        germplasm['biologicalStatusOfAccessionCode'] = str(r[6])
+                        germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES[r[6]]
+                    else:
+                        germplasm['biologicalStatusOfAccessionCode'] = None
+                        germplasm['biologicalStatusOfAccessionDescription'] = None
+                    {"donorAccessionNumber": r[8], "donorInstituteCode": r[9]}
+                    if r[8] or r[9]:
+                        germplasm['donors'].append({"donorAccessionNumber": r[8], "donorInstituteCode": r[9]})
+                    if r[11] and r[12] and r[13]:
+                        germplasm['germplasmOrigin'] = [{
+                            "coordinateUncertainty": r[11], 
+                            "coordinates": {
+                                "geometry": {
+                                    "type": "Point",
+                                    "coordinates": [float(r[12]), float(r[13])],
+                                }, 
+                                "type": "Feature"
+                            }
+                        }]
+                    else:
+                        germplasm['germplasmOrigin'] = []
+                    if r[18]:
+                        for i in r[18].split(";"):
+                            germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
+                    break
+
+    if germplasm:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": germplasm
+        }), 200
+    else:
+        return jsonify("sample not found!"), 404
+
 
 @brapi_bp.route('attributes')
 def get_attributes():
@@ -542,7 +868,7 @@ def get_callsets():
         "@context": res_context,
         "metadata": {
             "datafiles": res_datafiles,
-            "status": res_status,
+            "status": res_stat---------------us,
             "pagination": {
                 "pageSize": res_page_size,
                 "totalCount": res_total_count,
