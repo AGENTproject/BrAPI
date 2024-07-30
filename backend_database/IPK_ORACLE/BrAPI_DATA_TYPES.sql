@@ -34,26 +34,26 @@ from
 apexlimsophy.v_experimente_agent e join 
 apexlimsophy.v_proben_agent p on p.r_v_experimente = e.id
 join
-(SELECT fremdid,biosample_id,"sampleBarcode","plateName","well","sampleTimestamp" FROM 
+(SELECT fremdid,r_proben,biosample_id,"sampleBarcode","plateName","well","sampleTimestamp" FROM 
   ( 
-    SELECT fremdid,parameter,wert 
+    SELECT fremdid,r_proben,parameter,wert 
     FROM apexlimsophy.v_ergebnisse_agent
   ) 
   PIVOT ( 
     MAX(wert) 
   FOR parameter in ('Barcode' "sampleBarcode",'extractplatebarcode' "plateName", 'extractplatewell' "well", 'Isolation' "sampleTimestamp", 'DB_ID' biosample_id))
-) samp on p.fremdid = samp.fremdid
+)samp on p.id = samp.r_proben
 join (
 select
-distinct r_proben, listagg(parameter||': '||nvl(wert,'n/a'),'; ') additionalInfo from apexlimsophy.v_ergebnisse_agent where r_bereiche = 1098 group by r_proben
+distinct r_proben, listagg(parameter||': '||nvl(wert,'n/a'),'; ') AS additionalInfo from apexlimsophy.v_ergebnisse_agent where r_bereiche = 1098 group by r_proben
 ) infos on infos.r_proben=p.id
 left outer join
-(select min(r_proben) r_proben, fremdid
+(select min(r_proben) AS fremdid,r_proben
 from
 apexlimsophy.v_ergebnisse_agent 
 where methode = 'Agent_Bonitur'
-group by fremdid
-) bonitur on bonitur.fremdid=samp.fremdid
+group by fremdid,r_proben
+) bonitur on bonitur.fremdid=samp.fremdid AND  bonitur.r_proben = samp.r_proben
 where
-anlage = 'NovaSeq_Sequenzierung' or anlage = 'IHAR-Sequenzierung'
-;
+anlage = 'NovaSeq_Sequenzierung' or anlage = 'IHAR-Sequenzierung' or anlage =  'Connected_sequencing'
+
