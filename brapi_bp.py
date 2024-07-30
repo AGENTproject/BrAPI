@@ -58,8 +58,6 @@ def index():
     return render_template('index.html')
 
 
-
-
 @brapi_bp.route('/serverinfo', methods=['GET', 'OPTIONS'])
 def server_info():
     # serverinfo = config.get('brapi', {}).get('serverinfo', {})
@@ -110,20 +108,6 @@ def server_info():
                     "service": "callsets",
                     "versions": ["2.1"]
                 },
-                {
-                    "contentTypes": ["application/json"],
-                    "dataTypes": ["application/json"],
-                    "methods": ["GET", ],
-                    "service": "studies",
-                    "versions": ["2.1"]
-                },
-                {
-                    "contentTypes": ["application/json"],
-                    "dataTypes": ["application/json"],
-                    "methods": ["GET", ],
-                    "service": "germplasm",
-                    "versions": ["2.1"]
-                }
                 {
                     "contentTypes": ["application/json"],
                     "dataTypes": ["application/json"],
@@ -884,7 +868,7 @@ def get_callsets():
         "@context": res_context,
         "metadata": {
             "datafiles": res_datafiles,
-            "status": res_status,
+            "status": res_stat---------------us,
             "pagination": {
                 "pageSize": res_page_size,
                 "totalCount": res_total_count,
