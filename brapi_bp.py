@@ -121,7 +121,22 @@ def server_info():
                     "methods": ["GET", ],
                     "service": "attributevalues",
                     "versions": ["2.1"]
-                }
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "germplasm",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "studies",
+                    "versions": ["2.1"]
+                },
+
             ],
             "contactEmail": contact_email,
             "documentationURL": documentation_url,
@@ -140,6 +155,12 @@ def is_number(s):
         return True
     except ValueError:
         return False
+
+def handle_lob(value):
+    """Helper function to convert LOB to string."""
+    if isinstance(value, oracledb.LOB):
+        return value.read()
+    return value
 
 
 @brapi_bp.route('samples')
@@ -174,7 +195,8 @@ def get_samples():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     sample = {
-                        'additionalInfo': r[0], 'column': r[1], 'externalReferences': [{"referenceId": r[2], "referenceSource": ""}], 'germplasmDbId': str(r[3]), 'observationUnitDbId': str(r[4]), 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]), 'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]
+                        'additionalInfo':handle_lob(r[0]),  # Handle LOB
+                        'column': r[1], 'externalReferences': [{"referenceId": handle_lob(r[2]), "referenceSource": ""}], 'germplasmDbId': str(r[3]), 'observationUnitDbId': str(r[4]), 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]), 'sampleDescription': handle_lob(r[11]), 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': handle_lob(r[14]), 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]
                     }
                     samples.append(sample)
     except oracledb.DatabaseError as e:
@@ -817,7 +839,7 @@ def get_callsets():
             if where_clause:
                 where_clause += " AND "
             if key == 'callSetDbId':
-                 where_clause += f'"samplePUI" = \'{value}\''
+                 where_clause += f'UPPER(TRIM("samplePUI")) = UPPER(TRIM(\'{value}\'))'
             else:
                  where_clause += f'"{key}" = \'{value}\''
 
@@ -868,7 +890,7 @@ def get_callsets():
         "@context": res_context,
         "metadata": {
             "datafiles": res_datafiles,
-            "status": res_stat---------------us,
+            "status": res_status,
             "pagination": {
                 "pageSize": res_page_size,
                 "totalCount": res_total_count,
