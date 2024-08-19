@@ -8,10 +8,10 @@ REFRESH
 NEXT SYSDATE + 1/24           
 AS 
 select
-cast(null as varchar(4000)) as "additionalInfo",
+additionalinfo as "additionalInfo",		
 cast(null as varchar(50)) as "column",
 samp.biosample_id as "externalReferences",
-samp.fremdid as "germplasmDbId",
+samp.fremdid as "germplasmDbId", 		
 bonitur.r_proben as "observationUnitDbId",
 cast(null as varchar(50)) as "plateDbId",
 "plateName" as "plateName",
@@ -19,15 +19,16 @@ cast(null as varchar(255)) as "programDbId",
 cast(null as varchar(50)) as "row",
 "sampleBarcode" as "sampleBarcode",
 p.id as "sampleDbId",
-infos.additionalinfo as "sampleDescription",
+Probenbeschreibung as "sampleDescription",		
 cast(null as varchar(255)) as "sampleGroupDbId",
 material as "sampleName",
 biosample_id as "samplePUI",
 "sampleTimestamp" as "sampleTimestamp",
-'DNA' as "sampleType",
-cast(null as varchar(50)) as "studyDbId",
+detaille_eng as "sampleType",		 
+lab_name as "studyDbId", 		
+objekte as "organism", 				
 cast(null as varchar(255)) as "takenBy",
-'leaf' as "tissueType",
+organe_eng as "tissueType",		
 cast(null as varchar(50)) as "trialDbId",
 "well" as "well"
 from
@@ -54,6 +55,4 @@ apexlimsophy.v_ergebnisse_agent
 where methode = 'Agent_Bonitur'
 group by fremdid,r_proben
 ) bonitur on bonitur.fremdid=samp.fremdid AND  bonitur.r_proben = samp.r_proben
-where
-anlage = 'NovaSeq_Sequenzierung' or anlage = 'IHAR-Sequenzierung' or anlage =  'Connected_sequencing' 
-;
+where R_probentyp in (1016 , 1027)
