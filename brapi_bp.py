@@ -189,13 +189,20 @@ def get_samples():
     try:
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
             with connection.cursor() as cursor:
-                sql = f"""SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
+                sql = f"""SELECT COUNT(*) FROM mv_brapi_samples"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
                 cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "sampleDbId" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                cursor.execute(sql)
                 for r in cursor.fetchall():
                     sample = {
-                        'additionalInfo':handle_lob(r[0]),  # Handle LOB
+                        #'additionalInfo':handle_lob(r[0]),  # Handle LOB
                         'column': r[1], 'externalReferences': [{"referenceId": handle_lob(r[2]), "referenceSource": ""}], 'germplasmDbId': str(r[3]), 'observationUnitDbId': str(r[4]), 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]), 'sampleDescription': handle_lob(r[11]), 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': handle_lob(r[14]), 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]
                     }
                     samples.append(sample)
@@ -212,13 +219,7 @@ def get_samples():
         # Return empty list on generic error
         samples = []
 
-    res_total_count = len(samples)
     res_total_pages = math.ceil(res_total_count / res_page_size)
-
-    # Apply pagination to samples
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_samples = samples[start_index:end_index]
 
     return jsonify({
         "@context": res_context,
@@ -233,7 +234,7 @@ def get_samples():
             }
         },
         "result": {
-            "data": paginated_samples
+            "data": samples
         }
     })
 @brapi_bp.route('germplasm')
