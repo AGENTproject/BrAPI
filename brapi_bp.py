@@ -260,9 +260,16 @@ def get_germplasm():
 
     with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
         with connection.cursor() as cursor:
+            sql = f"""SELECT COUNT(*) FROM V006_ACCESSION_BRAPI"""
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+            cursor.execute(sql)
+            res_total_count = cursor.fetchall()[0][0]
+        with connection.cursor() as cursor:
             sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
             if where_clause:
                 sql += f" WHERE {where_clause}"
+            sql += f""" ORDER BY "ID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
             for r in cursor.execute(sql):
                 germplasm = {
                     'commonCropName': r[0],
@@ -310,13 +317,7 @@ def get_germplasm():
                         germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
                 germplasms.append(germplasm)
 
-    res_total_count = len(germplasms)
     res_total_pages = math.ceil(res_total_count / res_page_size)
-
-    # Apply pagination to germplasm
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_samples = germplasms[start_index:end_index]
 
     return jsonify({
         "@context": res_context,
@@ -331,7 +332,7 @@ def get_germplasm():
             }
         },
         "result": {
-            "data": paginated_samples
+            "data": germplasms
         }
     })  
     
@@ -363,10 +364,17 @@ def get_studies():
     # Get studies data
     with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
         with connection.cursor() as cursor:
+            sql = f"""SELECT COUNT(*) FROM V007_STUDY_BRAPI"""
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+            cursor.execute(sql)
+            res_total_count = cursor.fetchall()[0][0]
+        with connection.cursor() as cursor:
             sql = f"""SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
             if where_clause:
                 sql += f" WHERE {where_clause}"
             print (sql)
+            sql += f""" ORDER BY "STUDYDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
             for r in cursor.execute(sql):
                 study = {
                     'studyDbId': r[0], 
@@ -383,18 +391,12 @@ def get_studies():
                 }
                 studies.append(study)
 
-    res_total_count = len(studies)
     res_total_pages = math.ceil(res_total_count / res_page_size)
-
-    # Apply pagination to samples
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_studies = studies[start_index:end_index]
     
-    if paginated_studies:
+    if studies:
         # Build where clause for filtering by paginated data
         where_clause = ""
-        for study in paginated_studies:
+        for study in studies:
             if where_clause:
                 where_clause += " OR "
             where_clause += f'"STUDYDBID" = \'{study["studyDbId"]}\''
@@ -410,7 +412,7 @@ def get_studies():
                         "parameterName": r[1], 
                         "value": r[2]
                     }
-                    for study in paginated_studies:
+                    for study in studies:
                         if study["studyDbId"] == studyDbId:
                             study['environmentParameters'].append(environmentParameter)
             
@@ -422,7 +424,7 @@ def get_studies():
                 for r in cursor.execute(sql):
                     studyDbId = r[0]
                     observationVariableDbId = r[1]
-                    for study in paginated_studies:
+                    for study in studies:
                         if study["studyDbId"] == studyDbId:
                             study['observationVariableDbIds'].append(observationVariableDbId)
 
@@ -439,7 +441,7 @@ def get_studies():
             }
         },
         "result": {
-            "data": paginated_studies
+            "data": studies
         }
     })
 
