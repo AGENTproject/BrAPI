@@ -202,8 +202,28 @@ def get_samples():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     sample = {
-                        #'additionalInfo':handle_lob(r[0]),  # Handle LOB
-                        'column': r[1], 'externalReferences': [{"referenceId": handle_lob(r[2]), "referenceSource": ""}], 'germplasmDbId': str(r[3]), 'observationUnitDbId': str(r[4]), 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]), 'sampleDescription': handle_lob(r[11]), 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': handle_lob(r[14]), 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]
+                        'additionalInfo':handle_lob(r[0]),  # Handle LOB
+                        'column': r[1], 
+                        'externalReferences': [{"referenceId": handle_lob(r[2]), "referenceSource": ""}], 
+                        'germplasmDbId': str(r[3]), 
+                        'observationUnitDbId': str(r[4]), 
+                        'plateDbId': r[5], 
+                        'plateName': r[6], 
+                        'programDbId': r[7], 
+                        'row': r[8], 
+                        'sampleBarcode': r[9], 
+                        'sampleDbId': str(r[10]), 
+                        'sampleDescription': handle_lob(r[11]), 
+                        'sampleGroupDbId': r[12], 
+                        'sampleName': r[13], 
+                        'samplePUI': handle_lob(r[14]), 
+                        'sampleTimestamp': r[15], 
+                        'sampleType': r[16], 
+                        'studyDbId': r[17], 
+                        'takenBy': r[18], 
+                        'tissueType': r[19], 
+                        'trialDbId': r[20], 
+                        'well': r[21]
                     }
                     samples.append(sample)
     except oracledb.DatabaseError as e:
@@ -454,8 +474,29 @@ def get_sample_by_reference_id(reference_id):
             for r in cursor.execute(sql):
                 if str(r[10]) == reference_id:
                     sample = {
-                        'additionalInfo': r[0], 'column': r[1], 'externalReferences': [{"referenceId": r[2], "referenceSource": ""}], 'germplasmDbId': str(r[3]), 'observationUnitDbId': r[4], 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]),
-                              'sampleDescription': r[11], 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': r[14], 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]}
+                        'additionalInfo': handle_lob(r[0]), 
+                        'column': r[1], 
+                        'externalReferences': [{"referenceId": handle_lob(r[2]), "referenceSource": ""}], 
+                        'germplasmDbId': str(r[3]), 
+                        'observationUnitDbId': r[4], 
+                        'plateDbId': r[5], 
+                        'plateName': r[6], 
+                        'programDbId': r[7], 
+                        'row': r[8], 
+                        'sampleBarcode': r[9], 
+                        'sampleDbId': str(r[10]),
+                        'sampleDescription': handle_lob(r[11]),
+                        'sampleGroupDbId': r[12],
+                        'sampleName': r[13],
+                        'samplePUI': handle_lob(r[14]),
+                        'sampleTimestamp': r[15],
+                        'sampleType': r[16],
+                        'studyDbId': r[17],
+                        'takenBy': r[18],
+                        'tissueType': r[19],
+                        'trialDbId': r[20],
+                        'well': r[21]
+                    }
                     break
 
     if sample:
@@ -697,7 +738,7 @@ def get_attribute_by_reference_id(reference_id):
         with connection.cursor() as cursor:
             sql = """SELECT "ATTRIBUTEDBID", "ATTRIBUTENAME", "METHOD", "TRAIT", "ATTRIBUTECATEGORY", "ATTRIBUTEDESCRIPTION" FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
             for r in cursor.execute(sql):
-                if str(r[10]) == reference_id:
+                if str(r[0]) == reference_id:
                     attribute = {
                         'ATTRIBUTEDBID': str(r[0]), 'ATTRIBUTENAME': str(r[1]), 'METHOD': str(r[2]), 'TRAIT': r[3], 'ATTRIBUTECATEGORY': r[4], 'ATTRIBUTEDESCRIPTION': r[5]}
                     break
@@ -799,7 +840,7 @@ def get_attributevalue_by_reference_id(reference_id):
         with connection.cursor() as cursor:
             sql = """SELECT "ATTRIBUTENAME", "ATTRIBUTEVALUEDBID", "ADDITIONALINFO", "ATTRIBUTEDBID", "DETERMINEDDATE", "GERMPLASMDBID", "GERMPLASMNAME", "VALUE" FROM V011_TRAIT_VALUE_BRAPI""" 
             for r in cursor.execute(sql):
-                if str(r[10]) == reference_id:
+                if str(r[1]) == reference_id:
                     attributevalue = {
                         'ATTRIBUTENAME': r[0], 'ATTRIBUTEVALUEDBID': str(r[1]), 'ADDITIONALINFO': r[2], 'ATTRIBUTEDBID': str(r[3]), 'DETERMINEDDATE': str(r[4]), 'GERMPLASMDBID': str(r[5]), 'GERMPLASMNAME': r[6], 'VALUE': r[7]}
                     break
