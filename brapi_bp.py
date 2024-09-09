@@ -643,9 +643,16 @@ def get_attributes():
     try:
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
             with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
                 sql = f"""SELECT "ATTRIBUTEDBID", "ATTRIBUTENAME", "METHOD", "TRAIT", "ATTRIBUTECATEGORY", "ATTRIBUTEDESCRIPTION" FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "ATTRIBUTEDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     attribute = {
@@ -664,13 +671,7 @@ def get_attributes():
         # Return empty list on generic error
         attributes = []
 
-    res_total_count = len(attributes)
     res_total_pages = math.ceil(res_total_count / res_page_size)
-
-    # Apply pagination to samples
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_attributes = attributes[start_index:end_index]
 
     return jsonify({
         "@context": res_context,
@@ -685,7 +686,7 @@ def get_attributes():
             }
         },
         "result": {
-            "data": paginated_attributes
+            "data": attributes
         }
     })
 
@@ -744,9 +745,16 @@ def get_attributevalues():
     try:
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
             with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V011_TRAIT_VALUE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
                 sql = f"""SELECT "ATTRIBUTENAME", "ATTRIBUTEVALUEDBID", "ADDITIONALINFO", "ATTRIBUTEDBID", "DETERMINEDDATE", "GERMPLASMDBID", "GERMPLASMNAME", "VALUE" FROM V011_TRAIT_VALUE_BRAPI"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "ATTRIBUTEVALUEDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     attributevalue = {
@@ -765,13 +773,7 @@ def get_attributevalues():
         # Return empty list on generic error
         attributevalues = []
 
-    res_total_count = len(attributevalues)
     res_total_pages = math.ceil(res_total_count / res_page_size)
-
-    # Apply pagination to samples
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_attributevalues = attributevalues[start_index:end_index]
 
     return jsonify({
         "@context": res_context,
@@ -786,7 +788,7 @@ def get_attributevalues():
             }
         },
         "result": {
-            "data": paginated_attributevalues
+            "data": attributevalues
         }
     })
 
@@ -849,24 +851,31 @@ def get_callsets():
     callSets = []
     try:
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-         with connection.cursor() as cursor:
-            sql = f"""SELECT "samplePUI", "sampleDbId", "sampleTimestamp", "sampleName" AS "callSetName", "studyDbId" FROM mv_brapi_samples"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
-            cursor.execute(sql)
-            for r in cursor.fetchall():
-                callSet = {
-                    'callSetDbId': str(r[0]), # Mapping samplePUI to callSetDbId
-                    'callSetName': r[3],
-                    'sampleDbId': str(r[1]),
-                    'studyDbId': r[4],
-                    'created': r[2],
-                    'updated': r[2],  # Assuming the sampleTimestamp for both created and updated dates
-                    'additionalInfo': {},  # If there are additional attributes to include
-                    'externalReferences': [],  # Assuming how to handle external references if available
-                    'variantSetDbIds': []  # Placeholder if there's relevant data to link
-                }
-                callSets.append(callSet)
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM mv_brapi_samples"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "samplePUI", "sampleDbId", "sampleTimestamp", "sampleName" AS "callSetName", "studyDbId" FROM mv_brapi_samples"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "samplePUI" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    callSet = {
+                        'callSetDbId': str(r[0]), # Mapping samplePUI to callSetDbId
+                        'callSetName': r[3],
+                        'sampleDbId': str(r[1]),
+                        'studyDbId': r[4],
+                        'created': r[2],
+                        'updated': r[2],  # Assuming the sampleTimestamp for both created and updated dates
+                        'additionalInfo': {},  # If there are additional attributes to include
+                        'externalReferences': [],  # Assuming how to handle external references if available
+                        'variantSetDbIds': []  # Placeholder if there's relevant data to link
+                    }
+                    callSets.append(callSet)
 
     except oracledb.DatabaseError as e:
          # Log the error
@@ -881,13 +890,7 @@ def get_callsets():
         # Return empty list on generic error
         callSets = []
     
-    res_total_count = len(callSets)
     res_total_pages = math.ceil(res_total_count / res_page_size)
-
-    # Apply pagination
-    start_index = res_current_page * res_page_size
-    end_index = min(start_index + res_page_size, res_total_count)
-    paginated_callSets = callSets[start_index:end_index]
 
     return jsonify({
         "@context": res_context,
@@ -902,7 +905,7 @@ def get_callsets():
             }
         },
         "result": {
-            "data": paginated_callSets
+            "data": callSets
         }
     })
 
