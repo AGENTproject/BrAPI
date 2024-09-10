@@ -57,7 +57,6 @@ FAO_SAMPSTAT_CODES = {
 def index():
     return render_template('index.html')
 
-
 @brapi_bp.route('/serverinfo', methods=['GET', 'OPTIONS'])
 def server_info():
     # serverinfo = config.get('brapi', {}).get('serverinfo', {})
@@ -162,7 +161,6 @@ def handle_lob(value):
         return value.read()
     return value
 
-
 @brapi_bp.route('samples')
 def get_samples():
     res_context = None
@@ -257,6 +255,7 @@ def get_samples():
             "data": samples
         }
     })
+
 @brapi_bp.route('germplasm')
 def get_germplasm():
     res_context = None
@@ -515,8 +514,6 @@ def get_sample_by_reference_id(reference_id):
         }), 200
     else:
         return jsonify("sample not found!"), 404
-        
-
 
 @brapi_bp.route('/studies/<reference_id>')
 def get_study_by_reference_id(reference_id):
@@ -584,7 +581,6 @@ def get_study_by_reference_id(reference_id):
         }), 200
     else:
         return jsonify("sample not found!"), 404
-
 
 @brapi_bp.route('/germplasm/<reference_id>')
 def get_germplasm_by_reference_id(reference_id):
@@ -656,7 +652,6 @@ def get_germplasm_by_reference_id(reference_id):
         }), 200
     else:
         return jsonify("sample not found!"), 404
-
 
 @brapi_bp.route('attributes')
 def get_attributes():
@@ -875,7 +870,6 @@ def get_attributevalue_by_reference_id(reference_id):
         }), 200
     else:
         return jsonify("attributevalue not found!"), 404
-
 
 @brapi_bp.route('/callsets')
 def get_callsets():
