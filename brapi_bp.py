@@ -277,64 +277,77 @@ def get_germplasm():
 
     germplasms = []
 
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT COUNT(*) FROM V006_ACCESSION_BRAPI"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
-            cursor.execute(sql)
-            res_total_count = cursor.fetchall()[0][0]
-        with connection.cursor() as cursor:
-            sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
-            sql += f""" ORDER BY "ID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
-            for r in cursor.execute(sql):
-                germplasm = {
-                    'commonCropName': r[0],
-                    'germplasmDbId': str(r[1]),
-                    'germplasmName': r[2],
-                    'germplasmPUI': r[3],
-                    'accessionNumber': r[4],
-                    'acquisitionDate': r[5],
-                    'countryOfOriginCode': r[7],
-                    'defaultDisplayName': r[2],
-                    'donors': [],
-                    'genus': r[10],
-                    'instituteCode': r[14],
-                    'pedigree': r[15],
-                    'species': r[16],
-                    'speciesAuthority': r[17],
-                    'storageTypes': [],
-                    'subtaxa': r[19],
-                    'subtaxaAuthority': r[20],
-                }
-                if r[6]:
-                    germplasm['biologicalStatusOfAccessionCode'] = str(r[6])
-                    germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES[r[6]]
-                else:
-                    germplasm['biologicalStatusOfAccessionCode'] = None
-                    germplasm['biologicalStatusOfAccessionDescription'] = None
-                {"donorAccessionNumber": r[8], "donorInstituteCode": r[9]}
-                if r[8] or r[9]:
-                    germplasm['donors'].append({"donorAccessionNumber": r[8], "donorInstituteCode": r[9]})
-                if r[11] and r[12] and r[13]:
-                    germplasm['germplasmOrigin'] = [{
-                        "coordinateUncertainty": r[11], 
-                        "coordinates": {
-                            "geometry": {
-                                "type": "Point",
-                                "coordinates": [float(r[12]), float(r[13])],
-                            }, 
-                            "type": "Feature"
-                        }
-                    }]
-                else:
-                    germplasm['germplasmOrigin'] = []
-                if r[18]:
-                    for i in r[18].split(";"):
-                        germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
-                germplasms.append(germplasm)
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V006_ACCESSION_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "ID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                for r in cursor.execute(sql):
+                    germplasm = {
+                        'commonCropName': r[0],
+                        'germplasmDbId': str(r[1]),
+                        'germplasmName': r[2],
+                        'germplasmPUI': r[3],
+                        'accessionNumber': r[4],
+                        'acquisitionDate': r[5],
+                        'countryOfOriginCode': r[7],
+                        'defaultDisplayName': r[2],
+                        'donors': [],
+                        'genus': r[10],
+                        'instituteCode': r[14],
+                        'pedigree': r[15],
+                        'species': r[16],
+                        'speciesAuthority': r[17],
+                        'storageTypes': [],
+                        'subtaxa': r[19],
+                        'subtaxaAuthority': r[20],
+                    }
+                    if r[6]:
+                        germplasm['biologicalStatusOfAccessionCode'] = str(r[6])
+                        germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES[r[6]]
+                    else:
+                        germplasm['biologicalStatusOfAccessionCode'] = None
+                        germplasm['biologicalStatusOfAccessionDescription'] = None
+                    {"donorAccessionNumber": r[8], "donorInstituteCode": r[9]}
+                    if r[8] or r[9]:
+                        germplasm['donors'].append({"donorAccessionNumber": r[8], "donorInstituteCode": r[9]})
+                    if r[11] and r[12] and r[13]:
+                        germplasm['germplasmOrigin'] = [{
+                            "coordinateUncertainty": r[11], 
+                            "coordinates": {
+                                "geometry": {
+                                    "type": "Point",
+                                    "coordinates": [float(r[12]), float(r[13])],
+                                }, 
+                                "type": "Feature"
+                            }
+                        }]
+                    else:
+                        germplasm['germplasmOrigin'] = []
+                    if r[18]:
+                        for i in r[18].split(";"):
+                            germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
+                    germplasms.append(germplasm)
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        germplasms = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        germplasms = []
 
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -374,78 +387,90 @@ def get_studies():
                 where_clause += " AND "
             where_clause += f'"{key.upper()}" = \'{value}\''
     
-    print(where_clause)
-    
-    
-    
     studies = []
 
-    # Get studies data
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT COUNT(*) FROM V007_STUDY_BRAPI"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
-            cursor.execute(sql)
-            res_total_count = cursor.fetchall()[0][0]
-        with connection.cursor() as cursor:
-            sql = f"""SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
-            if where_clause:
-                sql += f" WHERE {where_clause}"
-            print (sql)
-            sql += f""" ORDER BY "STUDYDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
-            for r in cursor.execute(sql):
-                study = {
-                    'studyDbId': r[0], 
-                    'studyName': r[1], 
-                    'additionalInfo': r[2], 
-                    'commonCropName': r[3], 
-                    'endDate': r[4], 
-                    'environmentParameters': [], 
-                    'locationName': r[5], 
-                    'startDate': r[6], 
-                    'studyCode': r[7], 
-                    'studyDescription': r[8], 
-                    'observationVariableDbIds': []
-                }
-                studies.append(study)
-
-    res_total_pages = math.ceil(res_total_count / res_page_size)
-    
-    if studies:
-        # Build where clause for filtering by paginated data
-        where_clause = ""
-        for study in studies:
-            if where_clause:
-                where_clause += " OR "
-            where_clause += f'"STUDYDBID" = \'{study["studyDbId"]}\''
-            
-        # For every study in paginated data get environment parameters
+    try:
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            # Get number of rows
             with connection.cursor() as cursor:
-                sql = f"""SELECT "STUDYDBID", "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
-                sql += f" WHERE {where_clause}"
+                sql = f"""SELECT COUNT(*) FROM V007_STUDY_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            # Get studies data
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                print (sql)
+                sql += f""" ORDER BY "STUDYDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
                 for r in cursor.execute(sql):
-                    studyDbId = r[0]
-                    environmentParameter = {
-                        "parameterName": r[1], 
-                        "value": r[2]
+                    study = {
+                        'studyDbId': r[0], 
+                        'studyName': r[1], 
+                        'additionalInfo': r[2], 
+                        'commonCropName': r[3], 
+                        'endDate': r[4], 
+                        'environmentParameters': [], 
+                        'locationName': r[5], 
+                        'startDate': r[6], 
+                        'studyCode': r[7], 
+                        'studyDescription': r[8], 
+                        'observationVariableDbIds': []
                     }
-                    for study in studies:
-                        if study["studyDbId"] == studyDbId:
-                            study['environmentParameters'].append(environmentParameter)
-            
-        # For every study in paginated data get observation variables
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-            with connection.cursor() as cursor:
-                sql = f"""SELECT "STUDYDBID", "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
-                sql += f" WHERE {where_clause}"
-                for r in cursor.execute(sql):
-                    studyDbId = r[0]
-                    observationVariableDbId = r[1]
-                    for study in studies:
-                        if study["studyDbId"] == studyDbId:
-                            study['observationVariableDbIds'].append(observationVariableDbId)
+                    studies.append(study)
+        
+        if studies:
+            # Build where clause for filtering by paginated data
+            where_clause = ""
+            for study in studies:
+                if where_clause:
+                    where_clause += " OR "
+                where_clause += f'"STUDYDBID" = \'{study["studyDbId"]}\''
+                
+            # For every study in paginated data get environment parameters
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "STUDYDBID", "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    for r in cursor.execute(sql):
+                        studyDbId = r[0]
+                        environmentParameter = {
+                            "parameterName": r[1], 
+                            "value": r[2]
+                        }
+                        for study in studies:
+                            if study["studyDbId"] == studyDbId:
+                                study['environmentParameters'].append(environmentParameter)
+                
+            # For every study in paginated data get observation variables
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "STUDYDBID", "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    for r in cursor.execute(sql):
+                        studyDbId = r[0]
+                        observationVariableDbId = r[1]
+                        for study in studies:
+                            if study["studyDbId"] == studyDbId:
+                                study['observationVariableDbIds'].append(observationVariableDbId)
+                            
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        studies = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        studies = []
+
+    # Calculate number of pages
+    res_total_pages = math.ceil(res_total_count / res_page_size)
 
     return jsonify({
         "@context": res_context,
@@ -467,37 +492,54 @@ def get_studies():
 @brapi_bp.route('/samples/<reference_id>')
 def get_sample_by_reference_id(reference_id):
     sample = None
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = """SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
-            sql += f""" WHERE "sampleDbId" = {reference_id}"""
-            cursor.execute(sql)
-            result = cursor.fetchall()[0]
-            sample = {
-                'additionalInfo': handle_lob(result[0]), 
-                'column': result[1], 
-                'externalReferences': [{"referenceId": handle_lob(result[2]), "referenceSource": ""}], 
-                'germplasmDbId': str(result[3]), 
-                'observationUnitDbId': result[4], 
-                'plateDbId': result[5], 
-                'plateName': result[6], 
-                'programDbId': result[7], 
-                'row': result[8], 
-                'sampleBarcode': result[9], 
-                'sampleDbId': str(result[10]),
-                'sampleDescription': handle_lob(result[11]),
-                'sampleGroupDbId': result[12],
-                'sampleName': result[13],
-                'samplePUI': handle_lob(result[14]),
-                'sampleTimestamp': result[15],
-                'sampleType': result[16],
-                'studyDbId': result[17],
-                'takenBy': result[18],
-                'tissueType': result[19],
-                'trialDbId': result[20],
-                'well': result[21]
-            }
-
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
+                sql += f""" WHERE "sampleDbId" = {reference_id}"""
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    sample = {
+                        'additionalInfo': handle_lob(result[0]), 
+                        'column': result[1], 
+                        'externalReferences': [{"referenceId": handle_lob(result[2]), "referenceSource": ""}], 
+                        'germplasmDbId': str(result[3]), 
+                        'observationUnitDbId': result[4], 
+                        'plateDbId': result[5], 
+                        'plateName': result[6], 
+                        'programDbId': result[7], 
+                        'row': result[8], 
+                        'sampleBarcode': result[9], 
+                        'sampleDbId': str(result[10]),
+                        'sampleDescription': handle_lob(result[11]),
+                        'sampleGroupDbId': result[12],
+                        'sampleName': result[13],
+                        'samplePUI': handle_lob(result[14]),
+                        'sampleTimestamp': result[15],
+                        'sampleType': result[16],
+                        'studyDbId': result[17],
+                        'takenBy': result[18],
+                        'tissueType': result[19],
+                        'trialDbId': result[20],
+                        'well': result[21]
+                    }
+                else:
+                    sample = None
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        sample = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        sample = None
+    
     if sample:
         return jsonify({
             "metadata": {
@@ -521,49 +563,67 @@ def get_study_by_reference_id(reference_id):
     
     where_clause = f'"STUDYDBID" = \'{reference_id}\''
     
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = """SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
-            sql += f""" WHERE "STUDYDBID" = {reference_id}"""
-            cursor.execute(sql)
-            result = cursor.fetchall()[0]
-            study = {
-                'studyDbId': result[0], 
-                'studyName': result[1], 
-                'additionalInfo': result[2], 
-                'commonCropName': result[3], 
-                'endDate': result[4], 
-                'environmentParameters': [], 
-                'locationName': result[5], 
-                'startDate': result[6], 
-                'studyCode': result[7], 
-                'studyDescription': result[8], 
-                'observationVariableDbIds': []
-            }
-                    
-    # Build where clause for filtering by paginated data
-    where_clause = f'"STUDYDBID" = \'{study["studyDbId"]}\''
-                    
-    # For every study in paginated data get environment parameters
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
-            sql += f" WHERE {where_clause}"
-            for r in cursor.execute(sql):
-                environmentParameter = {
-                    "parameterName": r[0], 
-                    "value": r[1]
-                }
-                study['environmentParameters'].append(environmentParameter)
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
+                sql += f""" WHERE "STUDYDBID" = {reference_id}"""
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    study = {
+                        'studyDbId': result[0], 
+                        'studyName': result[1], 
+                        'additionalInfo': result[2], 
+                        'commonCropName': result[3], 
+                        'endDate': result[4], 
+                        'environmentParameters': [], 
+                        'locationName': result[5], 
+                        'startDate': result[6], 
+                        'studyCode': result[7], 
+                        'studyDescription': result[8], 
+                        'observationVariableDbIds': []
+                    }
+                else:
+                    study = None
+
+        if study:
+            # Build where clause for filtering by paginated data
+            where_clause = f'"STUDYDBID" = \'{study["studyDbId"]}\''
         
-    # For every study in paginated data get observation variables
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
-            sql += f" WHERE {where_clause}"
-            for r in cursor.execute(sql):
-                observationVariableDbId = r[0]
-                study['observationVariableDbIds'].append(observationVariableDbId)
+            # For every study in paginated data get environment parameters
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    for r in cursor.execute(sql):
+                        environmentParameter = {
+                            "parameterName": r[0], 
+                            "value": r[1]
+                        }
+                        study['environmentParameters'].append(environmentParameter)
+                
+            # For every study in paginated data get observation variables
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    for r in cursor.execute(sql):
+                        observationVariableDbId = r[0]
+                        study['observationVariableDbIds'].append(observationVariableDbId)
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        study = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        study = None
 
     if study:
         return jsonify({
@@ -585,56 +645,73 @@ def get_study_by_reference_id(reference_id):
 @brapi_bp.route('/germplasm/<reference_id>')
 def get_germplasm_by_reference_id(reference_id):
     germplasm = None
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
-            sql += f""" WHERE "ID" = {reference_id}"""
-            cursor.execute(sql)
-            result = cursor.fetchall()[0]
-            germplasm = {
-                'commonCropName': result[0],
-                'germplasmDbId': str(result[1]),
-                'germplasmName': result[2],
-                'germplasmPUI': result[3],
-                'accessionNumber': result[4],
-                'acquisitionDate': result[5],
-                'countryOfOriginCode': result[7],
-                'defaultDisplayName': result[2],
-                'donors': [],
-                'genus': result[10],
-                'instituteCode': result[14],
-                'pedigree': result[15],
-                'species': result[16],
-                'speciesAuthority': result[17],
-                'storageTypes': [],
-                'subtaxa': result[19],
-                'subtaxaAuthority': result[20],
-            }
-            if result[6]:
-                germplasm['biologicalStatusOfAccessionCode'] = str(result[6])
-                germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES[result[6]]
-            else:
-                germplasm['biologicalStatusOfAccessionCode'] = None
-                germplasm['biologicalStatusOfAccessionDescription'] = None
-            {"donorAccessionNumber": result[8], "donorInstituteCode": result[9]}
-            if result[8] or result[9]:
-                germplasm['donors'].append({"donorAccessionNumber": result[8], "donorInstituteCode": result[9]})
-            if result[11] and result[12] and result[13]:
-                germplasm['germplasmOrigin'] = [{
-                    "coordinateUncertainty": result[11], 
-                    "coordinates": {
-                        "geometry": {
-                            "type": "Point",
-                            "coordinates": [float(result[12]), float(result[13])],
-                        }, 
-                        "type": "Feature"
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
+                sql += f""" WHERE "ID" = {reference_id}"""
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    germplasm = {
+                        'commonCropName': result[0],
+                        'germplasmDbId': str(result[1]),
+                        'germplasmName': result[2],
+                        'germplasmPUI': result[3],
+                        'accessionNumber': result[4],
+                        'acquisitionDate': result[5],
+                        'countryOfOriginCode': result[7],
+                        'defaultDisplayName': result[2],
+                        'donors': [],
+                        'genus': result[10],
+                        'instituteCode': result[14],
+                        'pedigree': result[15],
+                        'species': result[16],
+                        'speciesAuthority': result[17],
+                        'storageTypes': [],
+                        'subtaxa': result[19],
+                        'subtaxaAuthority': result[20],
                     }
-                }]
-            else:
-                germplasm['germplasmOrigin'] = []
-            if result[18]:
-                for i in result[18].split(";"):
-                    germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
+                    if result[6]:
+                        germplasm['biologicalStatusOfAccessionCode'] = str(result[6])
+                        germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES[result[6]]
+                    else:
+                        germplasm['biologicalStatusOfAccessionCode'] = None
+                        germplasm['biologicalStatusOfAccessionDescription'] = None
+                    {"donorAccessionNumber": result[8], "donorInstituteCode": result[9]}
+                    if result[8] or result[9]:
+                        germplasm['donors'].append({"donorAccessionNumber": result[8], "donorInstituteCode": result[9]})
+                    if result[11] and result[12] and result[13]:
+                        germplasm['germplasmOrigin'] = [{
+                            "coordinateUncertainty": result[11], 
+                            "coordinates": {
+                                "geometry": {
+                                    "type": "Point",
+                                    "coordinates": [float(result[12]), float(result[13])],
+                                }, 
+                                "type": "Feature"
+                            }
+                        }]
+                    else:
+                        germplasm['germplasmOrigin'] = []
+                    if result[18]:
+                        for i in result[18].split(";"):
+                            germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
+                else:
+                    germplasm = None
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        germplasm = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        germplasm = None
 
     if germplasm:
         return jsonify({
@@ -729,20 +806,37 @@ def get_attributes():
 @brapi_bp.route('/attributes/<reference_id>')
 def get_attribute_by_reference_id(reference_id):
     attribute = None
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = """SELECT "ATTRIBUTEDBID", "ATTRIBUTENAME", "METHOD", "TRAIT", "ATTRIBUTECATEGORY", "ATTRIBUTEDESCRIPTION" FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
-            sql += f""" WHERE "ATTRIBUTEDBID" = {reference_id}"""
-            cursor.execute(sql)
-            result = cursor.fetchall()[0]
-            attribute = {
-                'ATTRIBUTEDBID': str(result[0]), 
-                'ATTRIBUTENAME': str(result[1]), 
-                'METHOD': str(result[2]), 
-                'TRAIT': result[3], 
-                'ATTRIBUTECATEGORY': result[4], 
-                'ATTRIBUTEDESCRIPTION': result[5]
-            }
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "ATTRIBUTEDBID", "ATTRIBUTENAME", "METHOD", "TRAIT", "ATTRIBUTECATEGORY", "ATTRIBUTEDESCRIPTION" FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
+                sql += f""" WHERE "ATTRIBUTEDBID" = {reference_id}"""
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    attribute = {
+                        'ATTRIBUTEDBID': str(result[0]), 
+                        'ATTRIBUTENAME': str(result[1]), 
+                        'METHOD': str(result[2]), 
+                        'TRAIT': result[3], 
+                        'ATTRIBUTECATEGORY': result[4], 
+                        'ATTRIBUTEDESCRIPTION': result[5]
+                    }
+                else:
+                    attribute = None
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        attribute = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        attribute = None
 
     if attribute:
         return jsonify({
@@ -837,23 +931,41 @@ def get_attributevalues():
 @brapi_bp.route('/attributevalues/<reference_id>')
 def get_attributevalue_by_reference_id(reference_id):
     attributevalue = None
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = """SELECT "ATTRIBUTENAME", "ATTRIBUTEVALUEDBID", "ADDITIONALINFO", "ATTRIBUTEDBID", "DETERMINEDDATE", "GERMPLASMDBID", "GERMPLASMNAME", "VALUE" FROM V011_TRAIT_VALUE_BRAPI""" 
-            sql += f""" WHERE "ATTRIBUTEVALUEDBID" = {reference_id}"""
-            cursor.execute(sql)
-            result = cursor.fetchall()[0]
-            attributevalue = {
-                'ATTRIBUTENAME': result[0], 
-                'ATTRIBUTEVALUEDBID': str(result[1]), 
-                'ADDITIONALINFO': result[2], 
-                'ATTRIBUTEDBID': str(result[3]), 
-                'DETERMINEDDATE': str(result[4]), 
-                'GERMPLASMDBID': str(result[5]), 
-                'GERMPLASMNAME': result[6], 
-                'VALUE': result[7]
-            }
-
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "ATTRIBUTENAME", "ATTRIBUTEVALUEDBID", "ADDITIONALINFO", "ATTRIBUTEDBID", "DETERMINEDDATE", "GERMPLASMDBID", "GERMPLASMNAME", "VALUE" FROM V011_TRAIT_VALUE_BRAPI""" 
+                sql += f""" WHERE "ATTRIBUTEVALUEDBID" = {reference_id}"""
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    attributevalue = {
+                        'ATTRIBUTENAME': result[0], 
+                        'ATTRIBUTEVALUEDBID': str(result[1]), 
+                        'ADDITIONALINFO': result[2], 
+                        'ATTRIBUTEDBID': str(result[3]), 
+                        'DETERMINEDDATE': str(result[4]), 
+                        'GERMPLASMDBID': str(result[5]), 
+                        'GERMPLASMNAME': result[6], 
+                        'VALUE': result[7]
+                    }
+                else:
+                    attributevalue = None
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        attributevalue = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        attributevalue = None
+        
+    
     if attributevalue:
         return jsonify({
             "metadata": {
@@ -961,24 +1073,42 @@ def get_callsets():
 @brapi_bp.route('/callsets/<reference_id>')
 def get_callset_by_reference_id(reference_id):
     callSet = None
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
-        with connection.cursor() as cursor:
-            sql = """SELECT "samplePUI", "studyDbId", "sampleDbId", "sampleName" AS "callSetName", "sampleTimestamp" FROM mv_brapi_samples"""
-            sql += f""" WHERE "samplePUI" = '{reference_id}' """
-            cursor.execute(sql)
-            result = cursor.fetchall()[0]
-            callSet = {
-                'callSetDbId': str(result[0]),
-                'callSetName': result[3],
-                'sampleDbId': str(result[1]),
-                'studyDbId': result[4],
-                'created': result[2],
-                'updated': result[2],
-                'additionalInfo': {},
-                'externalReferences': [],
-                'variantSetDbIds': []
-            }
-                    
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "samplePUI", "studyDbId", "sampleDbId", "sampleName" AS "callSetName", "sampleTimestamp" FROM mv_brapi_samples"""
+                sql += f""" WHERE "samplePUI" = '{reference_id}' """
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    callSet = {
+                        'callSetDbId': str(result[0]),
+                        'callSetName': result[3],
+                        'sampleDbId': str(result[1]),
+                        'studyDbId': result[4],
+                        'created': result[2],
+                        'updated': result[2],
+                        'additionalInfo': {},
+                        'externalReferences': [],
+                        'variantSetDbIds': []
+                    }
+                else:
+                    callSet = None
+
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        callSet = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        callSet = None
+
     if callSet:
         return jsonify({
             "metadata": {
