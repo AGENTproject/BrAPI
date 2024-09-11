@@ -769,7 +769,13 @@ def get_attributes():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     attribute = {
-                        'ATTRIBUTEDBID': r[0], 'ATTRIBUTENAME': r[1], 'METHOD': r[2], 'TRAIT': r[3], 'ATTRIBUTECATEGORY': r[4], 'ATTRIBUTEDESCRIPTION': r[5]}
+                        'attributeDbId': r[0], 
+                        'attributeName': r[1], 
+                        'method': r[2], 
+                        'trait': r[3], 
+                        'attributeCategory': r[4], 
+                        'attributeDescription': r[5]
+                    }
                     attributes.append(attribute)
     except oracledb.DatabaseError as e:
          # Log the error
@@ -816,12 +822,12 @@ def get_attribute_by_reference_id(reference_id):
                 if len(results) > 0:
                     result = results[0]
                     attribute = {
-                        'ATTRIBUTEDBID': str(result[0]), 
-                        'ATTRIBUTENAME': str(result[1]), 
-                        'METHOD': str(result[2]), 
-                        'TRAIT': result[3], 
-                        'ATTRIBUTECATEGORY': result[4], 
-                        'ATTRIBUTEDESCRIPTION': result[5]
+                        'attributeDbId': str(result[0]), 
+                        'attributeName': str(result[1]), 
+                        'method': str(result[2]), 
+                        'trait': result[3], 
+                        'attributeCategory': result[4], 
+                        'attributeDescription': result[5]
                     }
                 else:
                     attribute = None
@@ -894,7 +900,15 @@ def get_attributevalues():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     attributevalue = {
-                        'ATTRIBUTENAME': r[0], 'ATTRIBUTEVALUEDBID': str(r[1]), 'ADDITIONALINFO': r[2], 'ATTRIBUTEDBID': str(r[3]), 'DETERMINEDDATE': r[4], 'GERMPLASMDBID': str(r[5]), 'GERMPLASMNAME': r[6], 'VALUE': r[7]}
+                        'attributeName': r[0], 
+                        'attributeValueDbId': str(r[1]), 
+                        'additionalInfo': r[2], 
+                        'attributeDbId': str(r[3]), 
+                        'determinedDate': r[4], 
+                        'germplasmDbId': str(r[5]), 
+                        'germplasmName': r[6], 
+                        'value': r[7]
+                    }
                     attributevalues.append(attributevalue)
     except oracledb.DatabaseError as e:
          # Log the error
@@ -941,14 +955,14 @@ def get_attributevalue_by_reference_id(reference_id):
                 if len(results) > 0:
                     result = results[0]
                     attributevalue = {
-                        'ATTRIBUTENAME': result[0], 
-                        'ATTRIBUTEVALUEDBID': str(result[1]), 
-                        'ADDITIONALINFO': result[2], 
-                        'ATTRIBUTEDBID': str(result[3]), 
-                        'DETERMINEDDATE': str(result[4]), 
-                        'GERMPLASMDBID': str(result[5]), 
-                        'GERMPLASMNAME': result[6], 
-                        'VALUE': result[7]
+                        'attributeName': result[0], 
+                        'attributeValueDbId': str(result[1]), 
+                        'additionalInfo': result[2], 
+                        'attributeDbId': str(result[3]), 
+                        'determinedDate': str(result[4]), 
+                        'germplasmDbId': str(result[5]), 
+                        'germplasmName': result[6], 
+                        'value': result[7]
                     }
                 else:
                     attributevalue = None
