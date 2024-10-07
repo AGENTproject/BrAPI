@@ -161,6 +161,7 @@ def handle_lob(value):
         return value.read()
     return value
 
+
 @brapi_bp.route('samples')
 def get_samples():
     res_context = None
@@ -171,73 +172,85 @@ def get_samples():
     res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
     res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
 
-    # Construct the WHERE clause based on query parameters
+    # Construct the WHERE clause and bind variables
     where_clause = ""
+    bind_variables = {}
     query_parameters = request.args.to_dict()
+    
+    # Build the WHERE clause with bind variables
     for key, value in query_parameters.items():
-        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+        if key not in ['pageSize', 'currentPage', 'page']: #Exclude pagination keys
             if where_clause:
                 where_clause += " AND "
-            if is_number(value):
-                where_clause += f'"{key}" = {value}'
+            if is_number(value):                      # Handle numeric value
+                where_clause += f'"{key}" = :{key}'   # Use bind variables
+                bind_variables[key] = int(value)      # Bind numeric value 
             else:
-                where_clause += f'"{key}" = \'{value}\''
+                where_clause += f'"{key}" = :{key}'   # Use bind variables
+                bind_variables[key] = value           # Assign bind variable values
+
+     # Base SQL query without pagination
+    base_sql = f"""
+                SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", 
+                       "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", 
+                       "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", 
+                       "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", 
+                       "takenBy", "tissueType", "trialDbId", "well"
+                FROM mv_brapi_samples
+                """
+    
+    # SQL for counting total rows
+    count_sql = f"SELECT COUNT(*) FROM mv_brapi_samples"
+    if where_clause:
+        count_sql += f" WHERE {where_clause}"
+
 
     samples = []
+    total_count = 0
+
+    # Connect to the Oracle database
     try:
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
             with connection.cursor() as cursor:
-                sql = f"""SELECT COUNT(*) FROM mv_brapi_samples"""
+                
+                
+            #excute the query with the bind_variables dictionary
+                cursor.execute(count_sql, bind_variables)
+                total_count = cursor.fetchone()[0]  # Get the total count from the first row
+
+             # Prepare the SQL statement for paginated results
+                paginated_sql = base_sql
                 if where_clause:
-                    sql += f" WHERE {where_clause}"
-                cursor.execute(sql)
-                res_total_count = cursor.fetchall()[0][0]
-            with connection.cursor() as cursor:
-                sql = f"""SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
-                if where_clause:
-                    sql += f" WHERE {where_clause}"
-                sql += f""" ORDER BY "sampleDbId" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
-                cursor.execute(sql)
-                for r in cursor.fetchall():
+                    paginated_sql += f" WHERE {where_clause}"
+
+                 # Add OFFSET and LIMIT for pagination
+                paginated_sql += f""" ORDER BY "sampleDbId" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                
+                 #Execute the paginated SQL statement
+                cursor.execute(paginated_sql, bind_variables)
+
+                # Fetch all rows at once
+                rows = cursor.fetchall()
+
+                # Process the results in the loop, no further SQL execution inside
+                for r in rows:
                     sample = {
                         'additionalInfo':handle_lob(r[0]),  # Handle LOB
-                        'column': r[1], 
-                        'externalReferences': [{"referenceId": handle_lob(r[2]), "referenceSource": ""}], 
-                        'germplasmDbId': str(r[3]), 
-                        'observationUnitDbId': str(r[4]), 
-                        'plateDbId': r[5], 
-                        'plateName': r[6], 
-                        'programDbId': r[7], 
-                        'row': r[8], 
-                        'sampleBarcode': r[9], 
-                        'sampleDbId': str(r[10]), 
-                        'sampleDescription': handle_lob(r[11]), 
-                        'sampleGroupDbId': r[12], 
-                        'sampleName': r[13], 
-                        'samplePUI': handle_lob(r[14]), 
-                        'sampleTimestamp': r[15], 
-                        'sampleType': r[16], 
-                        'studyDbId': r[17], 
-                        'takenBy': r[18], 
-                        'tissueType': r[19], 
-                        'trialDbId': r[20], 
-                        'well': r[21]
+                        'column': r[1], 'externalReferences': [{"referenceId": handle_lob(r[2]), "referenceSource": ""}], 'germplasmDbId': str(r[3]), 'observationUnitDbId': str(r[4]), 'plateDbId': r[5], 'plateName': r[6], 'programDbId': r[7], 'row': r[8], 'sampleBarcode': r[9], 'sampleDbId': str(r[10]), 'sampleDescription': handle_lob(r[11]), 'sampleGroupDbId': r[12], 'sampleName': r[13], 'samplePUI': handle_lob(r[14]), 'sampleTimestamp': r[15], 'sampleType': r[16], 'studyDbId': r[17], 'takenBy': r[18], 'tissueType': r[19], 'trialDbId': r[20], 'well': r[21]
                     }
                     samples.append(sample)
+
     except oracledb.DatabaseError as e:
-         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        samples = []
+        samples = []                                       #return empty list on database eroor
     except Exception as e:
-        # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        samples = []
+        samples = []                                       #return epty list on generic error
 
-    res_total_pages = math.ceil(res_total_count / res_page_size)
+          # Calculate total pages
+    total_pages = math.ceil(total_count / res_page_size)
 
     return jsonify({
         "@context": res_context,
@@ -246,8 +259,8 @@ def get_samples():
             "status": res_status,
             "pagination": {
                 "pageSize": res_page_size,
-                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
-                "totalPages": res_total_pages,
+                "totalCount":total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": total_pages,
                 "currentPage": res_current_page
             }
         },
@@ -255,7 +268,6 @@ def get_samples():
             "data": samples
         }
     })
-
 @brapi_bp.route('germplasm')
 def get_germplasm():
     res_context = None
