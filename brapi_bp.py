@@ -1152,4 +1152,1023 @@ def get_callset_by_reference_id(reference_id):
     else:
         return jsonify("Callset not found!"), 404
     
+@brapi_bp.route('/scales')
+def get_scales():
+    scaleDbId = request.args.get('scaleDbId')
+    if scaleDbId:
+        scale = None
+    
+    res_context = None
+    res_datafiles = []
+    res_status = []
 
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key not in ['pageSize', 'currentPage', 'page']:
+            if where_clause:
+                where_clause += " AND "
+            if key == 'scaleDbId':
+                 where_clause += f'UPPER(TRIM("SCALEDBID")) = UPPER(TRIM(\'{value}\'))'
+            else:
+                 where_clause += f'"{key}" = \'{value}\''
+
+    scales = []
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V017_SCALE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "SCALEDBID", "SCALENAME" FROM V017_SCALE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "SCALEDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    scale = {
+                        'scaleDbId': r[0],
+                        'scaleName': r[1],
+                    }
+                    scales.append(scale)
+
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        scales = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        scales = []
+    
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": scales
+        }
+    })
+
+@brapi_bp.route('/scales/<reference_id>')
+def get_scale_by_reference_id(reference_id):
+    scale = None
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "SCALEDBID", "SCALENAME" FROM V017_SCALE_BRAPI"""
+                sql += f""" WHERE "SCALEDBID" = '{reference_id}' """
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    scale = {
+                        'scaleDbId': result[0],
+                        'scaleName': result[1],
+                    }
+                else:
+                    scale = None
+
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        scale = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        scale = None
+
+    if scale:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": scale
+        }), 200
+    else:
+        return jsonify("Scale not found!"), 404
+    
+@brapi_bp.route('/methods')
+def get_methods():
+    methodDbId = request.args.get('methodDbId')
+    if methodDbId:
+        method = None
+    
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key not in ['pageSize', 'currentPage', 'page']:
+            if where_clause:
+                where_clause += " AND "
+            if key == 'methodDbId':
+                 where_clause += f'UPPER(TRIM("METHODDBID")) = UPPER(TRIM(\'{value}\'))'
+            else:
+                 where_clause += f'"{key}" = \'{value}\''
+
+    methods = []
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V016_METHODS_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "METHODDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    method = {
+                        'methodDbId': r[0],
+                        'methodName': r[1],
+                        'bibliographicalReference': r[2],
+                        'description': r[3],
+                    }
+                    methods.append(method)
+
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        methods = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        methods = []
+    
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": methods
+        }
+    })
+
+@brapi_bp.route('/methods/<reference_id>')
+def get_method_by_reference_id(reference_id):
+    method = None
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
+                sql += f""" WHERE "METHODDBID" = '{reference_id}' """
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    method = {
+                        'methodDbId': result[0],
+                        'methodName': result[1],
+                        'bibliographicalReference': result[2],
+                        'description': result[3],
+                    }
+                else:
+                    method = None
+
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        method = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        method = None
+
+    if method:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": method
+        }), 200
+    else:
+        return jsonify("Method not found!"), 404
+        
+        
+@brapi_bp.route('/traits')
+def get_traits():
+    traitDbId = request.args.get('traitDbId')
+    if traitDbId:
+        trait = None
+    
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key not in ['pageSize', 'currentPage', 'page']:
+            if where_clause:
+                where_clause += " AND "
+            if key == 'traitDbId':
+                 where_clause += f'UPPER(TRIM("TRAITDBID")) = UPPER(TRIM(\'{value}\'))'
+            else:
+                 where_clause += f'"{key}" = \'{value}\''
+
+    traits = []
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V015_TRAITS_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "TRAITDBID", "TRAITNAME", "ADDITIONALINFO", "MAINABBREVIATION", "STATUS", "TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "TRAITDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    trait = {
+                        'traitDbId': r[0],
+                        'traitName': r[1],
+                        'additionalInfo': r[2],
+                        'mainAbbreviation': r[3],
+                        'status': r[4],
+                        'traitDescription': r[5],
+                    }
+                    traits.append(trait)
+
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        traits = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        traits = []
+    
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": traits
+        }
+    })
+
+@brapi_bp.route('/traits/<reference_id>')
+def get_trait_by_reference_id(reference_id):
+    trait = None
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "TRAITDBID", "TRAITNAME", "ADDITIONALINFO", "MAINABBREVIATION", "STATUS", "TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
+                sql += f""" WHERE "TRAITDBID" = '{reference_id}' """
+                print(sql)
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    trait = {
+                        'traitDbId': result[0],
+                        'traitName': result[1],
+                        'additionalInfo': result[2],
+                        'mainAbbreviation': result[3],
+                        'status': result[4],
+                        'traitDescription': result[5],
+                    }
+                else:
+                    trait = None
+
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        trait = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        trait = None
+
+    if trait:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": trait
+        }), 200
+    else:
+        return jsonify("Trait not found!"), 404
+        
+        
+@brapi_bp.route('variables')
+def get_variables():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            where_clause += f'"{key.upper()}" = \'{value}\''
+    
+    variables = []
+
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            # Get number of rows
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V014_VARIABLE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            # Get variables data
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "OBSERVATIONVARIABLEDBID", "OBSERVATIONVARIABLENAME", "ADDITIONALINFO", "COMMONCROPNAME", "STATUS" FROM V014_VARIABLE_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                print (sql)
+                sql += f""" ORDER BY "OBSERVATIONVARIABLEDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                for r in cursor.execute(sql):
+                    variable = {
+                        'method': {}, 
+                        'observationVariableDbId': r[0], 
+                        'observationVariableName': r[1], 
+                        'scale': {}, 
+                        'trait': {}, 
+                        'additionalInfo': r[2], 
+                        'commonCropName': r[3], 
+                        'status': r[4], 
+                    }
+                    variables.append(variable)
+        
+        if variables:
+            # Build where clause for filtering by paginated data
+            where_clause = ""
+            for variable in variables:
+                if where_clause:
+                    where_clause += " OR "
+                where_clause += f'"METHODDBID" = \'{variable["observationVariableDbId"]}\''
+                
+            # For every variable in paginated data get method
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    print (sql)
+                    for r in cursor.execute(sql):
+                        method = {
+                            "methodDbId": r[0], 
+                            "methodName": r[1],
+                            "bibliographicalReference": r[2],
+                            "description": r[3],
+                        }
+                        # TODO what happends if there is more thean one method found?
+                        for variable in variables:
+                            if variable["observationVariableDbId"] == method["methodDbId"]:
+                                variable['method'] = method
+                                
+            
+            # Build where clause for filtering by paginated data
+            where_clause = ""
+            for variable in variables:
+                if where_clause:
+                    where_clause += " OR "
+                where_clause += f'"SCALEDBID" = \'{variable["observationVariableDbId"]}\''
+                
+            # For every variable in paginated data get scale
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "SCALEDBID", "SCALENAME" FROM V017_SCALE_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    print (sql)
+                    for r in cursor.execute(sql):
+                        scale = {
+                            "scaleDbId": r[0], 
+                            "scaleName": r[1],
+                        }
+                        # TODO what happends if there is more thean one scale found?
+                        for variable in variables:
+                            if variable["observationVariableDbId"] == scale["scaleDbId"]:
+                                variable['scale'] = scale
+                                
+            
+            # Build where clause for filtering by paginated data
+            where_clause = ""
+            for variable in variables:
+                if where_clause:
+                    where_clause += " OR "
+                where_clause += f'"TRAITDBID" = \'{variable["observationVariableDbId"]}\''
+                
+            # For every variable in paginated data get trait
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "TRAITDBID","TRAITNAME","ADDITIONALINFO","MAINABBREVIATION","STATUS","TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    print (sql)
+                    for r in cursor.execute(sql):
+                        trait = {
+                            "traitDbId": r[0], 
+                            "traitName": r[1],
+                            "additionalInfo": r[2],
+                            "mainAbbreviation": r[3],
+                            "status": r[4],
+                            "traitDescription": r[5],
+                        }
+                        # TODO what happends if there is more thean one trait found?
+                        for variable in variables:
+                            if variable["observationVariableDbId"] == trait["traitDbId"]:
+                                variable['trait'] = trait
+                
+                            
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        variables = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        variables = []
+
+    # Calculate number of pages
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": variables
+        }
+    })
+    
+    
+@brapi_bp.route('/variables/<reference_id>')
+def get_variable_by_reference_id(reference_id):
+    variable = None
+    
+    where_clause = f'"VARIABLEDBID" = \'{reference_id}\''
+    
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","ADDITIONALINFO","COMMONCROPNAME","STATUS" FROM V014_VARIABLE_BRAPI"""
+                sql += f""" WHERE "OBSERVATIONVARIABLEDBID" = {reference_id}"""
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    variable = {
+                        'method': {}, 
+                        'observationVariableDbId': result[0], 
+                        'observationVariableName': result[1], 
+                        'scale': {}, 
+                        'trait': {}, 
+                        'additionalInfo': result[2], 
+                        'commonCropName': result[3], 
+                        'status': result[4], 
+                    }
+                else:
+                    variable = None
+        
+        if variable:
+            # Build where clause for filtering by paginated data
+            where_clause = f'"METHODDBID" = \'{variable["observationVariableDbId"]}\''
+        
+            # For every variable in paginated data get method
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    print (sql)
+                    for r in cursor.execute(sql):
+                        method = {
+                            "methodDbId": r[0], 
+                            "methodName": r[1],
+                            "bibliographicalReference": r[2],
+                            "description": r[3],
+                        }
+                        # TODO what happends if there is more thean one method found?
+                        variable['method'] = method
+            
+            # Build where clause for filtering by paginated data
+            where_clause = f'"SCALEDBID" = \'{variable["observationVariableDbId"]}\''
+        
+            # For every variable in paginated data get scale
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "SCALEDBID","SCALENAME" FROM V017_SCALE_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    print (sql)
+                    for r in cursor.execute(sql):
+                        scale = {
+                            "scaleDbId": r[0], 
+                            "scaleName": r[1],
+                        }
+                        # TODO what happends if there is more than one scale found?
+                        variable['scale'] = scale
+            
+            # Build where clause for filtering by paginated data
+            where_clause = f'"TRAITDBID" = \'{variable["observationVariableDbId"]}\''
+        
+            # For every variable in paginated data get trait
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "TRAITDBID","TRAITNAME","ADDITIONALINFO","MAINABBREVIATION","STATUS","TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    print (sql)
+                    for r in cursor.execute(sql):
+                        trait = {
+                            "traitDbId": r[0], 
+                            "traitName": r[1],
+                            "additionalInfo": r[2],
+                            "mainAbbreviation": r[3],
+                            "status": r[4],
+                            "traitDescription": r[5],
+                        }
+                        # TODO what happends if there is more than one trait found?
+                        variable['trait'] = trait
+        
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        variable = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        variable = None
+
+    if variable:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": variable
+        }), 200
+    else:
+        return jsonify("Variable not found!"), 404
+        
+@brapi_bp.route('/observations')
+def get_observations():
+    observationDbId = request.args.get('observationDbId')
+    if observationDbId:
+        observation = None
+    
+    res_context = None
+    res_datafiles = []
+    res_status = []
+    
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key not in ['pageSize', 'currentPage', 'page']:
+            if where_clause:
+                where_clause += " AND "
+            if key == 'observationDbId':
+                 where_clause += f'UPPER(TRIM("OBSERVATIONUNITDBID")) = UPPER(TRIM(\'{value}\'))'
+            else:
+                 where_clause += f'"{key}" = \'{value}\''
+    
+    observations = []
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V012_OBSERVATION_UNITS_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                sql += f""" ORDER BY "OBSERVATIONUNITDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                cursor.execute(sql)
+                for r in cursor.fetchall():
+                    observation = {
+                        'observationDbId': r[0],
+                        'additionalInfo': r[1],
+                        'germplasmDbId': r[2],
+                        'observationTimeStamp': r[3],
+                        'observationUnitDbId': r[0],
+                        'observationVariableDbId': r[4],
+                        'observationVariableName': r[5],
+                        'studyDbId': r[6],
+                        'uploadedBy': r[7],
+                        'value': r[8],
+                    }
+                    observations.append(observation)
+
+    except oracledb.DatabaseError as e:
+         # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        observations = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        observations = []
+    
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": observations
+        }
+    })
+
+@brapi_bp.route('/observations/<reference_id>')
+def get_observation_by_reference_id(reference_id):
+    observation = None
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
+                sql += f""" WHERE "OBSERVATIONUNITDBID" = '{reference_id}' """
+                print(sql)
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    observation = {
+                        'observationDbId': result[0],
+                        'additionalInfo': result[1],
+                        'germplasmDbId': result[2],
+                        'observationTimeStamp': result[3],
+                        'observationUnitDbId': result[0],
+                        'observationVariableDbId': result[4],
+                        'observationVariableName': result[5],
+                        'studyDbId': result[6],
+                        'uploadedBy': result[7],
+                        'value': result[8],
+                    }
+                else:
+                    observation = None
+
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        observation = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        observation = None
+
+    if observation:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": observation
+        }), 200
+    else:
+        return jsonify("Observation not found!"), 404
+        
+        
+@brapi_bp.route('observationunits')
+def get_observationunits():
+    res_context = None
+    res_datafiles = []
+    res_status = []
+
+    # Get page size and page number from query parameters
+    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
+    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+
+    # Construct the WHERE clause based on query parameters
+    where_clause = ""
+    query_parameters = request.args.to_dict()
+    for key, value in query_parameters.items():
+        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+            if where_clause:
+                where_clause += " AND "
+            where_clause += f'"{key.upper()}" = \'{value}\''
+    
+    observationunits = []
+    
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            # Get number of rows
+            with connection.cursor() as cursor:
+                sql = f"""SELECT COUNT(*) FROM V012_OBSERVATION_UNITS_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                cursor.execute(sql)
+                res_total_count = cursor.fetchall()[0][0]
+            # Get observationunits data
+            with connection.cursor() as cursor:
+                sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","STUDYDBID","STUDYNAME" FROM V012_OBSERVATION_UNITS_BRAPI"""
+                if where_clause:
+                    sql += f" WHERE {where_clause}"
+                print (sql)
+                sql += f""" ORDER BY "OBSERVATIONUNITDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                for r in cursor.execute(sql):
+                    observationunit = {
+                        'observationUnitDbId': r[0], 
+                        'additionalInfo': r[1], 
+                        'germplasmDbId': r[2], 
+                        'observations': [], 
+                        'studyDbId': r[3], 
+                        'studyName': r[4], 
+                    }
+                    observationunits.append(observationunit)
+        if observationunits:
+            # Build where clause for filtering by paginated data
+            where_clause = ""
+            for observationunit in observationunits:
+                if where_clause:
+                    where_clause += " OR "
+                where_clause += f'"OBSERVATIONUNITDBID" = \'{observationunit["observationUnitDbId"]}\''
+            
+            # For every observationunit in paginated data get observations
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    for r in cursor.execute(sql):
+                        observationunitDbId = r[0]
+                        observation = {
+                            "observationDbId": r[0], 
+                            "additionalInfo": r[1], 
+                            "germplasmDbId": r[2], 
+                            "observationTimeStamp": r[3], 
+                            "observationUnitDbId": r[0], 
+                            "observationVariableDbId": r[4], 
+                            "observationVariableName": r[5], 
+                            "studyDbId": r[6], 
+                            "uploadedBy": r[7], 
+                            "value": r[8], 
+                        }
+                        for observationunit in observationunits:
+                            if observationunit["observationUnitDbId"] == observationunitDbId:
+                                observationunit['observations'].append(observation)
+
+                            
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        observationunits = []
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        observationunits = []
+
+    # Calculate number of pages
+    res_total_pages = math.ceil(res_total_count / res_page_size)
+
+    return jsonify({
+        "@context": res_context,
+        "metadata": {
+            "datafiles": res_datafiles,
+            "status": res_status,
+            "pagination": {
+                "pageSize": res_page_size,
+                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalPages": res_total_pages,
+                "currentPage": res_current_page
+            }
+        },
+        "result": {
+            "data": observationunits
+        }
+    })
+    
+    
+@brapi_bp.route('/observationunits/<reference_id>')
+def get_observationunit_by_reference_id(reference_id):
+    observationunit = None
+    
+    where_clause = f'"OBSERVATIONUNITDBID" = \'{reference_id}\''
+    
+    try:
+        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with connection.cursor() as cursor:
+                sql = """SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","STUDYDBID","STUDYNAME" FROM V012_OBSERVATION_UNITS_BRAPI"""
+                sql += f""" WHERE "OBSERVATIONUNITDBID" = {reference_id}"""
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                if len(results) > 0:
+                    result = results[0]
+                    observationunit = {
+                        'observationUnitDbId': result[0], 
+                        'additionalInfo': result[1], 
+                        'germplasmDbId': result[2], 
+                        'observations': [], 
+                        'studyDbId': result[3], 
+                        'studyName': result[4], 
+                    }
+                else:
+                    observationunit = None
+
+        if observationunit:
+            # Build where clause for filtering by paginated data
+            where_clause = f'"OBSERVATIONUNITDBID" = \'{observationunit["observationUnitDbId"]}\''
+        
+            # For every observationunit in paginated data get observations
+            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+                with connection.cursor() as cursor:
+                    sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
+                    sql += f" WHERE {where_clause}"
+                    for r in cursor.execute(sql):
+                        observation = {
+                            "observationDbId": r[0], 
+                            "additionalInfo": r[1], 
+                            "germplasmDbId": r[2], 
+                            "observationTimeStamp": r[3], 
+                            "observationUnitDbId": r[0], 
+                            "observationVariableDbId": r[4], 
+                            "observationVariableName": r[5], 
+                            "studyDbId": r[6], 
+                            "uploadedBy": r[7], 
+                            "value": r[8], 
+                        }
+                        observationunit['observations'].append(observation)
+           
+    except oracledb.DatabaseError as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"Database error: {e}")
+        # Return empty list on database error
+        observationunit = None
+    except Exception as e:
+        # Log the error
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        # Return empty list on generic error
+        observationunit = None
+
+    if observationunit:
+        return jsonify({
+            "metadata": {
+                "datafiles": [],
+                "status": [],
+                "pagination": {
+                    "pageSize": 0,
+                    "totalCount": 1,
+                    "totalPages": 1,
+                    "currentPage": 0
+                }
+            },
+            "result": observationunit
+        }), 200
+    else:
+        return jsonify("Observation unit not found!"), 404
