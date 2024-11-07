@@ -3,6 +3,8 @@ import oracledb
 from flask import request
 import math
 import os
+from shared import res_context, res_datafiles, res_status 
+
 
 
 
@@ -14,6 +16,16 @@ DB_PORT = os.getenv("DB_PORT")
 DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+# Create a connection pool
+pool = oracledb.create_pool(
+    user=DB_USER,
+    password=DB_PASSWORD,
+    dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}",
+    min=2,  # Minimum number of connections in the pool
+    max=10,  # Maximum number of connections in the pool
+    increment=1  # Number of connections to open at a time if needed
+)
 
 # Routes and their functions
 
@@ -164,9 +176,6 @@ def handle_lob(value):
 
 @brapi_bp.route('samples')
 def get_samples():
-    res_context = None
-    res_datafiles = []
-    res_status = []
 
     # Get page size and page number from query parameters
     res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
@@ -210,7 +219,8 @@ def get_samples():
 
     # Connect to the Oracle database
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
+        with pool.acquire() as connection:  # Acquire a connection from the pool
+        #with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
             with connection.cursor() as cursor:
                 
                 
@@ -268,6 +278,8 @@ def get_samples():
             "data": samples
         }
     })
+
+
 @brapi_bp.route('germplasm')
 def get_germplasm():
     res_context = None
@@ -278,31 +290,57 @@ def get_germplasm():
     res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
     res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
 
-    # Construct the WHERE clause based on query parameters
+    # Construct the WHERE clause and bind variables based on query parameters
     where_clause = ""
+    bind_variables = {}
     query_parameters = request.args.to_dict()
+
     for key, value in query_parameters.items():
-        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+        if key not in ['pageSize', 'currentPage', 'page']:  # Exclude pagination keys
             if where_clause:
                 where_clause += " AND "
-            where_clause += f'"{key}" = \'{value}\''
+            where_clause += f'"{key}" = :{key}'  # Use bind variables for safety
+            bind_variables[key] = value  # Assign bind variable value
 
     germplasms = []
 
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        # Use connection pooling
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
-                sql = f"""SELECT COUNT(*) FROM V006_ACCESSION_BRAPI"""
+                # Query to get the total count of rows
+                count_sql = "SELECT COUNT(*) FROM V006_ACCESSION_BRAPI"
                 if where_clause:
-                    sql += f" WHERE {where_clause}"
-                cursor.execute(sql)
-                res_total_count = cursor.fetchall()[0][0]
+                    count_sql += f" WHERE {where_clause}"
+                cursor.execute(count_sql, bind_variables)
+                res_total_count = cursor.fetchone()[0]  # Fetch the total count
+
             with connection.cursor() as cursor:
-                sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
+                # Query to fetch paginated germplasm data
+                germplasm_sql = f"""
+                    SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", 
+                           "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", 
+                           "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", 
+                           "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", 
+                           "SUBTAXON", "SUBTAUTHOR"
+                    FROM V006_ACCESSION_BRAPI
+                """
                 if where_clause:
-                    sql += f" WHERE {where_clause}"
-                sql += f""" ORDER BY "ID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
-                for r in cursor.execute(sql):
+                    germplasm_sql += f" WHERE {where_clause}"
+                
+                germplasm_sql += f"""
+                    ORDER BY "ID" 
+                    OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+                """
+
+                # Add offset and limit to bind variables
+                bind_variables['offset'] = res_page_size * res_current_page
+                bind_variables['limit'] = res_page_size
+
+                # Execute the paginated germplasm query
+                cursor.execute(germplasm_sql, bind_variables)
+
+                for r in cursor.fetchall():
                     germplasm = {
                         'commonCropName': r[0],
                         'germplasmDbId': str(r[1]),
@@ -322,45 +360,56 @@ def get_germplasm():
                         'subtaxa': r[19],
                         'subtaxaAuthority': r[20],
                     }
+
+                    # Biological status of accession
                     if r[6]:
                         germplasm['biologicalStatusOfAccessionCode'] = str(r[6])
-                        germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES[r[6]]
+                        germplasm['biologicalStatusOfAccessionDescription'] = FAO_SAMPSTAT_CODES.get(r[6], "")
                     else:
                         germplasm['biologicalStatusOfAccessionCode'] = None
                         germplasm['biologicalStatusOfAccessionDescription'] = None
-                    {"donorAccessionNumber": r[8], "donorInstituteCode": r[9]}
+
+                    # Donors
                     if r[8] or r[9]:
                         germplasm['donors'].append({"donorAccessionNumber": r[8], "donorInstituteCode": r[9]})
+
+                    # Germplasm origin with coordinates
                     if r[11] and r[12] and r[13]:
                         germplasm['germplasmOrigin'] = [{
-                            "coordinateUncertainty": r[11], 
+                            "coordinateUncertainty": r[11],
                             "coordinates": {
                                 "geometry": {
                                     "type": "Point",
                                     "coordinates": [float(r[12]), float(r[13])],
-                                }, 
+                                },
                                 "type": "Feature"
                             }
                         }]
                     else:
                         germplasm['germplasmOrigin'] = []
+
+                    # Storage types
                     if r[18]:
-                        for i in r[18].split(";"):
-                            germplasm['storageTypes'].append({"code": i, "description": FAO_STORAGE_CODES[i]})
+                        for code in r[18].split(";"):
+                            germplasm['storageTypes'].append({
+                                "code": code,
+                                "description": FAO_STORAGE_CODES.get(code, "")
+                            })
+
                     germplasms.append(germplasm)
+
     except oracledb.DatabaseError as e:
-        # Log the error
+        # Log the database error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        germplasms = []
+        germplasms = []  # Return empty list on database error
     except Exception as e:
-        # Log the error
+        # Log any other errors
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        germplasms = []
+        germplasms = []  # Return empty list on generic error
 
+    # Calculate total pages
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
     return jsonify({
@@ -370,7 +419,7 @@ def get_germplasm():
             "status": res_status,
             "pagination": {
                 "pageSize": res_page_size,
-                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalCount": res_total_count,
                 "totalPages": res_total_pages,
                 "currentPage": res_current_page
             }
@@ -378,8 +427,13 @@ def get_germplasm():
         "result": {
             "data": germplasms
         }
-    })  
+    })
+
     
+import oracledb
+from flask import request, jsonify
+import math
+
 @brapi_bp.route('studies')
 def get_studies():
     res_context = None
@@ -391,94 +445,106 @@ def get_studies():
     res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
 
     # Construct the WHERE clause based on query parameters
-    where_clause = ""
+    where_clause = []
     query_parameters = request.args.to_dict()
+    bind_variables = {}
+
     for key, value in query_parameters.items():
-        if key != 'pageSize' and key != 'currentPage' and key != 'page':
-            if where_clause:
-                where_clause += " AND "
-            where_clause += f'"{key.upper()}" = \'{value}\''
+        if key not in ['pageSize', 'currentPage', 'page']:
+            where_clause.append(f'"{key.upper()}" = :{key}')
+            bind_variables[key] = value
     
     studies = []
 
     try:
+        # Using connection pooling for better performance
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
             # Get number of rows
             with connection.cursor() as cursor:
-                sql = f"""SELECT COUNT(*) FROM V007_STUDY_BRAPI"""
+                sql = """SELECT COUNT(*) FROM V007_STUDY_BRAPI"""
                 if where_clause:
-                    sql += f" WHERE {where_clause}"
-                cursor.execute(sql)
-                res_total_count = cursor.fetchall()[0][0]
+                    sql += " WHERE " + " AND ".join(where_clause)
+                cursor.execute(sql, bind_variables)
+                res_total_count = cursor.fetchone()[0]
+            
             # Get studies data
             with connection.cursor() as cursor:
-                sql = f"""SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
+                sql = """SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", 
+                         "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" 
+                         FROM V007_STUDY_BRAPI"""
                 if where_clause:
-                    sql += f" WHERE {where_clause}"
-                print (sql)
-                sql += f""" ORDER BY "STUDYDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
-                for r in cursor.execute(sql):
+                    sql += " WHERE " + " AND ".join(where_clause)
+                
+                # Add pagination to the SQL query
+                sql += f""" ORDER BY "STUDYDBID" OFFSET :offset ROWS FETCH NEXT :page_size ROWS ONLY"""
+                
+                # Calculate the offset for pagination
+                bind_variables['offset'] = res_page_size * res_current_page
+                bind_variables['page_size'] = res_page_size
+
+                cursor.execute(sql, bind_variables)
+                for r in cursor.fetchall():
                     study = {
-                        'studyDbId': r[0], 
-                        'studyName': r[1], 
-                        'additionalInfo': r[2], 
-                        'commonCropName': r[3], 
-                        'endDate': r[4], 
-                        'environmentParameters': [], 
-                        'locationName': r[5], 
-                        'startDate': r[6], 
-                        'studyCode': r[7], 
-                        'studyDescription': r[8], 
+                        'studyDbId': r[0],
+                        'studyName': r[1],
+                        'additionalInfo': r[2],
+                        'commonCropName': r[3],
+                        'endDate': r[4],
+                        'environmentParameters': [],
+                        'locationName': r[5],
+                        'startDate': r[6],
+                        'studyCode': r[7],
+                        'studyDescription': r[8],
                         'observationVariableDbIds': []
                     }
                     studies.append(study)
         
+        # After fetching studies, retrieve environment parameters and observation variables
         if studies:
-            # Build where clause for filtering by paginated data
-            where_clause = ""
-            for study in studies:
-                if where_clause:
-                    where_clause += " OR "
-                where_clause += f'"STUDYDBID" = \'{study["studyDbId"]}\''
-                
-            # For every study in paginated data get environment parameters
+            # Build where_clause for fetching environment parameters and observation variables
+            study_db_ids = [study['studyDbId'] for study in studies]
+            study_db_ids_str = ', '.join(str(id) for id in study_db_ids)
+
+            # Fetch environment parameters
             with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
                 with connection.cursor() as cursor:
-                    sql = f"""SELECT "STUDYDBID", "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
-                    sql += f" WHERE {where_clause}"
-                    for r in cursor.execute(sql):
-                        studyDbId = r[0]
-                        environmentParameter = {
-                            "parameterName": r[1], 
+                    sql_env_params = """SELECT "STUDYDBID", "PARAMETERNAME", "VALUE" 
+                                         FROM V008_ENVIRONMENT_PARAMETERS_BRAPI 
+                                         WHERE "STUDYDBID" IN ({})""".format(study_db_ids_str)
+                    cursor.execute(sql_env_params)
+                    for r in cursor.fetchall():
+                        study_db_id = r[0]
+                        environment_parameter = {
+                            "parameterName": r[1],
                             "value": r[2]
                         }
                         for study in studies:
-                            if study["studyDbId"] == studyDbId:
-                                study['environmentParameters'].append(environmentParameter)
-                
-            # For every study in paginated data get observation variables
+                            if study["studyDbId"] == study_db_id:
+                                study['environmentParameters'].append(environment_parameter)
+
+            # Fetch observation variables
             with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
                 with connection.cursor() as cursor:
-                    sql = f"""SELECT "STUDYDBID", "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
-                    sql += f" WHERE {where_clause}"
-                    for r in cursor.execute(sql):
-                        studyDbId = r[0]
-                        observationVariableDbId = r[1]
+                    sql_obs_vars = """SELECT "STUDYDBID", "OBSERVATIONVARIABLEDBID" 
+                                      FROM V009_OBSERVATION_VARIABLE_BRAPI 
+                                      WHERE "STUDYDBID" IN ({})""".format(study_db_ids_str)
+                    cursor.execute(sql_obs_vars)
+                    for r in cursor.fetchall():
+                        study_db_id = r[0]
+                        observation_variable_db_id = r[1]
                         for study in studies:
-                            if study["studyDbId"] == studyDbId:
-                                study['observationVariableDbIds'].append(observationVariableDbId)
-                            
+                            if study["studyDbId"] == study_db_id:
+                                study['observationVariableDbIds'].append(observation_variable_db_id)
+            
     except oracledb.DatabaseError as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
         studies = []
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
         studies = []
 
     # Calculate number of pages
@@ -491,7 +557,7 @@ def get_studies():
             "status": res_status,
             "pagination": {
                 "pageSize": res_page_size,
-                "totalCount": res_total_count,  # Remove this line to eliminate the totalCount entry
+                "totalCount": res_total_count,
                 "totalPages": res_total_pages,
                 "currentPage": res_current_page
             }
@@ -501,17 +567,29 @@ def get_studies():
         }
     })
 
+
 @brapi_bp.route('/samples/<reference_id>')
 def get_sample_by_reference_id(reference_id):
     sample = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        # Use pooled connection
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
-                sql = """SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" FROM mv_brapi_samples"""
-                sql += f""" WHERE "sampleDbId" = {reference_id}"""
-                cursor.execute(sql)
+                # Use bind variable for reference_id to prevent SQL injection
+                sql = """
+                    SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", 
+                           "observationUnitDbId", "plateDbId", "plateName", "programDbId", 
+                           "row", "sampleBarcode", "sampleDbId", "sampleDescription", 
+                           "sampleGroupDbId", "sampleName", "samplePUI", "sampleTimestamp", 
+                           "sampleType", "studyDbId", "takenBy", "tissueType", "trialDbId", "well" 
+                    FROM mv_brapi_samples
+                    WHERE "sampleDbId" = :reference_id
+                """
+                # Execute query with bind variable
+                cursor.execute(sql, {'reference_id': reference_id})
                 results = cursor.fetchall()
-                if len(results) > 0:
+
+                if results:
                     result = results[0]
                     sample = {
                         'additionalInfo': handle_lob(result[0]), 
@@ -537,21 +615,18 @@ def get_sample_by_reference_id(reference_id):
                         'trialDbId': result[20],
                         'well': result[21]
                     }
-                else:
-                    sample = None
     except oracledb.DatabaseError as e:
-        # Log the error
+        # Log the database error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        sample = None
+        sample = None  # Return None if a database error occurs
     except Exception as e:
-        # Log the error
+        # Log any other error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        sample = None
-    
+        sample = None  # Return None if any other error occurs
+
+    # Respond based on whether a sample was found
     if sample:
         return jsonify({
             "metadata": {
@@ -569,74 +644,92 @@ def get_sample_by_reference_id(reference_id):
     else:
         return jsonify("sample not found!"), 404
 
+
 @brapi_bp.route('/studies/<reference_id>')
 def get_study_by_reference_id(reference_id):
     study = None
     
-    where_clause = f'"STUDYDBID" = \'{reference_id}\''
-    
     try:
+        # Establish the database connection
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
             with connection.cursor() as cursor:
-                sql = """SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION" FROM V007_STUDY_BRAPI"""
-                sql += f""" WHERE "STUDYDBID" = {reference_id}"""
-                cursor.execute(sql)
+                # Ensure the placeholder is consistently named :studyDbId
+                sql = """
+                    SELECT "STUDYDBID", "STUDYNAME", "ADDITIONALINFO", "COMMONCROPNAME", 
+                           "ENDDATE", "LOCATIONNAME", "STARTDATE", "STUDYCODE", "STUDYDESCRIPTION"
+                    FROM V007_STUDY_BRAPI
+                    WHERE "STUDYDBID" = :studyDbId
+                """
+                
+                # Bind variables as a dictionary with the key matching the placeholder in the SQL query
+                bind_variables = {'studyDbId': reference_id}  # Ensure 'studyDbId' is used consistently
+
+                # Execute the query with the bind variables
+                cursor.execute(sql, bind_variables)
+                
+                # Fetch the results
                 results = cursor.fetchall()
+
                 if len(results) > 0:
                     result = results[0]
                     study = {
-                        'studyDbId': result[0], 
-                        'studyName': result[1], 
-                        'additionalInfo': result[2], 
-                        'commonCropName': result[3], 
-                        'endDate': result[4], 
-                        'environmentParameters': [], 
-                        'locationName': result[5], 
-                        'startDate': result[6], 
-                        'studyCode': result[7], 
-                        'studyDescription': result[8], 
+                        'studyDbId': result[0],
+                        'studyName': result[1],
+                        'additionalInfo': result[2],
+                        'commonCropName': result[3],
+                        'endDate': result[4],
+                        'environmentParameters': [],
+                        'locationName': result[5],
+                        'startDate': result[6],
+                        'studyCode': result[7],
+                        'studyDescription': result[8],
                         'observationVariableDbIds': []
                     }
                 else:
                     study = None
 
         if study:
-            # Build where clause for filtering by paginated data
-            where_clause = f'"STUDYDBID" = \'{study["studyDbId"]}\''
+            # Use the same consistent placeholder for filtering environment parameters
+            where_clause = '"STUDYDBID" = :studyDbId'
         
-            # For every study in paginated data get environment parameters
+            # Get environment parameters
             with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
                 with connection.cursor() as cursor:
-                    sql = f"""SELECT "PARAMETERNAME", "VALUE" FROM V008_ENVIRONMENT_PARAMETERS_BRAPI"""
-                    sql += f" WHERE {where_clause}"
-                    for r in cursor.execute(sql):
+                    sql_env_params = f"""SELECT "PARAMETERNAME", "VALUE" 
+                                          FROM V008_ENVIRONMENT_PARAMETERS_BRAPI 
+                                          WHERE {where_clause}"""
+                    cursor.execute(sql_env_params, {'studyDbId': study["studyDbId"]})
+                    for r in cursor.fetchall():
                         environmentParameter = {
                             "parameterName": r[0], 
                             "value": r[1]
                         }
                         study['environmentParameters'].append(environmentParameter)
                 
-            # For every study in paginated data get observation variables
+            # Get observation variables
             with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
                 with connection.cursor() as cursor:
-                    sql = f"""SELECT "OBSERVATIONVARIABLEDBID" FROM V009_OBSERVATION_VARIABLE_BRAPI"""
-                    sql += f" WHERE {where_clause}"
-                    for r in cursor.execute(sql):
+                    sql_obs_vars = f"""SELECT "OBSERVATIONVARIABLEDBID" 
+                                        FROM V009_OBSERVATION_VARIABLE_BRAPI 
+                                        WHERE {where_clause}"""
+                    cursor.execute(sql_obs_vars, {'studyDbId': study["studyDbId"]})
+                    for r in cursor.fetchall():
                         observationVariableDbId = r[0]
                         study['observationVariableDbIds'].append(observationVariableDbId)
+
     except oracledb.DatabaseError as e:
-        # Log the error
+        # Log any database errors
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        study = None
-    except Exception as e:
-        # Log the error
-        from flask import current_app as app
-        app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
         study = None
 
+    except Exception as e:
+        # Log any general exceptions
+        from flask import current_app as app
+        app.logger.error(f"An error occurred: {e}")
+        study = None
+
+    # Return the result or error
     if study:
         return jsonify({
             "metadata": {
@@ -652,7 +745,14 @@ def get_study_by_reference_id(reference_id):
             "result": study
         }), 200
     else:
-        return jsonify("sample not found!"), 404
+        return jsonify("study not found!"), 404
+
+
+
+
+
+
+
 
 @brapi_bp.route('/germplasm/<reference_id>')
 def get_germplasm_by_reference_id(reference_id):
