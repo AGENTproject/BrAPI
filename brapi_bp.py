@@ -147,6 +147,48 @@ def server_info():
                     "service": "studies",
                     "versions": ["2.1"]
                 },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "methods",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "observationunits",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "variables",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "observations",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "scales",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "traits",
+                    "versions": ["2.1"]
+                },
 
             ],
             "contactEmail": contact_email,
@@ -295,15 +337,22 @@ def get_germplasm():
     bind_variables = {}
     query_parameters = request.args.to_dict()
 
+    COLUMN_MAP = {
+    "commonCropName": "Wheat",
+    # Add other mappings as needed
+}
+
     for key, value in query_parameters.items():
         if key not in ['pageSize', 'currentPage', 'page']:  # Exclude pagination keys
+            column_name = COLUMN_MAP.get(key, key)  # Map to actual column or use the key directly
             if where_clause:
                 where_clause += " AND "
-            where_clause += f'"{key}" = :{key}'  # Use bind variables for safety
+            where_clause += f'"{column_name}" = :{key}'  # Use mapped column name
             bind_variables[key] = value  # Assign bind variable value
 
     germplasms = []
-
+    
+    res_total_count = 0  # Initialize to prevent unbound errors
     try:
         # Use connection pooling
         with pool.acquire() as connection:
@@ -455,6 +504,8 @@ def get_studies():
             bind_variables[key] = value
     
     studies = []
+    
+    res_total_count = 0  # Initialize to 0 at the start
 
     try:
         # Using connection pooling for better performance
@@ -865,6 +916,8 @@ def get_attributes():
                 where_clause +=  f'"{key}" = \'{value}\''
 
     attributes = []
+
+    res_total_count =0
     try:
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
             with connection.cursor() as cursor:
