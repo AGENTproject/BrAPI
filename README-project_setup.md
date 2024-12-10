@@ -62,29 +62,23 @@ To validate the /samples endpoint with different query parameter combinations.
 
 **Tests**
 
-    1. **Simple Test**
+    1. Simple Test
         - Test with a single parameter: page=1.
         - Verify:
             - Status code = 200.
             - Response JSON includes currentPage = 1.
+        - Example:
+            - bash
+            - curl -X GET : <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1>'
 
-        **Example:**
-
-        bash
-
-        curl -X GET : <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1>'
-
-    2. **Complex Test**
+    2. Complex Test
         - Test with multiple parameters: page=1, pageSize=5, and sampleType=DNA.
         - Verify:
             - Status code = 200.
             - Response JSON includes pageSize = 5 and a filtered dataset matching the sampleType.
-
-        **Example:**
-
-        bash
-
-        curl -X GET : ‘<http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1&pageSize=5&sampleType=DNA>'
+        - Example:
+            - bash
+            - curl -X GET : ‘<http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1&pageSize=5&sampleType=DNA>'
 
 **Database Validation**
     - Run queries directly on the database to ensure the API results align with the mv_brapi_samples table.
