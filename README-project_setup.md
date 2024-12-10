@@ -51,40 +51,41 @@ To validate the /samples endpoint with different query parameter combinations.
 
 **Testing Steps**
 
-1. **Verify Basic Connectivity**
+**Verify Basic Connectivity**
     - Use a browser or REST client to send a GET request to /genotyping/brapi/v2/samples.
     - **Expected**: A JSON response with metadata and result.data fields.
 
     Example:
 
-- Send a GET request to the endpoint using Postman or cURL
-- Bash: curl -X GET : <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples>
+    - Send a GET request to the endpoint using Postman or cURL
+    - Bash: curl -X GET : <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples>
 
-1. **Simple Test**
-    - Test with a single parameter: page=1.
-    - Verify:
-        - Status code = 200.
-        - Response JSON includes currentPage = 1.
+**Tests**
+    1. **Simple Test**
+        - Test with a single parameter: page=1.
+        - Verify:
+            - Status code = 200.
+            - Response JSON includes currentPage = 1.
 
-**Example:**
+        **Example:**
 
-bash
+        bash
 
-curl -X GET : <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1>'
+        curl -X GET : <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1>'
 
-2. **Complex Test**
-    - Test with multiple parameters: page=1, pageSize=5, and sampleType=DNA.
-    - Verify:
-        - Status code = 200.
-        - Response JSON includes pageSize = 5 and a filtered dataset matching the sampleType.
+    2. **Complex Test**
+        - Test with multiple parameters: page=1, pageSize=5, and sampleType=DNA.
+        - Verify:
+            - Status code = 200.
+            - Response JSON includes pageSize = 5 and a filtered dataset matching the sampleType.
 
-**Example:**
+        **Example:**
 
-bash
+        bash
 
-curl -X GET : ‘<http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1&pageSize=5&sampleType=DNA>'
+        curl -X GET : ‘<http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples?page=1&pageSize=5&sampleType=DNA>'
 
-1. **Database Validation**
+**Database Validation**
     - Run queries directly on the database to ensure the API results align with the mv_brapi_samples table.
 
 #### Test Scenarios
