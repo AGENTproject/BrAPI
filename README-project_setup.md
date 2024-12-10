@@ -61,6 +61,7 @@ To validate the /samples endpoint with different query parameter combinations.
     - Bash: curl -X GET : <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples>
 
 **Tests**
+
     1. **Simple Test**
         - Test with a single parameter: page=1.
         - Verify:
