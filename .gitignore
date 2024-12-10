@@ -162,3 +162,4 @@ cython_debug/
 #.idea/
 /.project
 /code_analysis.txt
+/report_samples.html
