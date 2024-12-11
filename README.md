@@ -37,6 +37,15 @@ The [BrAPI modul](https://wiki.brapi.org/images/f/f7/BrAPI_Domains.png) to be im
 - https://agent.ipk-gatersleben.de/genotyping/brapi/v2/germplasm
 - https://agent.ipk-gatersleben.de/genotyping/brapi/v2/attributes
 - https://agent.ipk-gatersleben.de/genotyping/brapi/v2/attributevalues
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/methods 
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/observationunits 
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/variables 
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/observations 
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/scales 
+- https://agent.ipk-gatersleben.de/genotyping/brapi/v2/traits 
+
+
+
 
 
 
