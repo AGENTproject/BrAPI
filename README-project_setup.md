@@ -41,8 +41,8 @@ To validate the /samples endpoint with different query parameter combinations.
 **Endpoint Details**
 
 - **Endpoint URL:**
-  - **Local**: <http://localhost:&lt;port&gt;/genotyping/brapi/v2/samples>
-  - **Test** **Server**: Replace &lt;port&gt; with the port number (e.g., <http://test-server:5000/samples>)
+  - **Local**: <http://localhost:&lt;port &gt;/genotyping/brapi/v2/samples>
+  - **Test** **Server**: Replace &lt; port &gt; with the port number (e.g., <http://test-server:5000/samples>)
 - **HTTP Method:** GET
 - **Parameters**:
   - pageSize: Number of records per page (integer).
