@@ -305,7 +305,7 @@ def get_germplasm():
                 for r in cursor.execute(sql):
                     germplasm = {
                         'commonCropName': r[0],
-                        'germplasmDbId': str(r[1]),
+                        'germplasmDbId': r[3],
                         'germplasmName': r[2],
                         'germplasmPUI': r[3],
                         'accessionNumber': r[4],
@@ -661,14 +661,14 @@ def get_germplasm_by_reference_id(reference_id):
         with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
-                sql += f""" WHERE "ID" = {reference_id}"""
+                sql += f""" WHERE "AGENT_ID" = '{reference_id}'"""
                 cursor.execute(sql)
                 results = cursor.fetchall()
                 if len(results) > 0:
                     result = results[0]
                     germplasm = {
                         'commonCropName': result[0],
-                        'germplasmDbId': str(result[1]),
+                        'germplasmDbId': result[3],
                         'germplasmName': result[2],
                         'germplasmPUI': result[3],
                         'accessionNumber': result[4],
