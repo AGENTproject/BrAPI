@@ -1,6 +1,7 @@
 from flask import Flask
-from brapi_bp import brapi_bp
-from admin_bp import admin_bp
+import os
+import platform
+import oracledb
 
 
 # load envinornment variables from .env file
@@ -12,10 +13,11 @@ app = Flask(__name__)
 app.debug = True
 
 #Blueprints
-app.register_blueprint(brapi_bp)
-app.register_blueprint(admin_bp)
-
-
-
-if __name__ == "__main__":
+with app.app_context():
+    from brapi_bp import brapi_bp
+    from admin_bp import admin_bp
+    app.register_blueprint(brapi_bp)
+    app.register_blueprint(admin_bp)
+     
+if __name__ == "__main__":    
     app.run('localhost', 5000)
