@@ -4,10 +4,7 @@ from flask import request
 import math
 import os
 from shared import res_context, res_datafiles, res_status 
-
-
-
-
+import platform
 
 brapi_bp = Blueprint('brapi_bp', __name__, url_prefix='/genotyping/brapi/v2')
 
@@ -17,6 +14,14 @@ DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
+d = None                               # On Linux, no directory should be passed
+if platform.system() == "Darwin":      # macOS
+        d = os.environ.get("HOME")+("/Downloads/instantclient_23_7")
+elif platform.system() == "Windows":   # Windows
+    d = r"C:\oracle\instantclient_23_7"
+oracledb.init_oracle_client(lib_dir=d)
+
+
 # Create a connection pool
 pool = oracledb.create_pool(
     user=DB_USER,
@@ -24,8 +29,9 @@ pool = oracledb.create_pool(
     dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}",
     min=2,  # Minimum number of connections in the pool
     max=10,  # Maximum number of connections in the pool
-    increment=1  # Number of connections to open at a time if needed
+    increment=1  # Number of connections to open at a time if needed#
 )
+
 
 # Routes and their functions
 
@@ -240,6 +246,8 @@ def get_samples():
                 where_clause += f'"{key}" = :{key}'   # Use bind variables
                 bind_variables[key] = value           # Assign bind variable values
 
+    print(where_clause)
+
      # Base SQL query without pagination
     base_sql = f"""
                 SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", 
@@ -277,6 +285,8 @@ def get_samples():
 
                  # Add OFFSET and LIMIT for pagination
                 paginated_sql += f""" ORDER BY "sampleDbId" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                
+                print(paginated_sql)
                 
                  #Execute the paginated SQL statement
                 cursor.execute(paginated_sql, bind_variables)
@@ -338,9 +348,10 @@ def get_germplasm():
     query_parameters = request.args.to_dict()
 
     COLUMN_MAP = {
-    "commonCropName": "Wheat",
-    # Add other mappings as needed
-}
+        "commonCropName": "Wheat",
+        "germplasmDbId":"AGENT_ID"
+        # Add other mappings as needed
+    }
 
     for key, value in query_parameters.items():
         if key not in ['pageSize', 'currentPage', 'page']:  # Exclude pagination keys
@@ -349,6 +360,8 @@ def get_germplasm():
                 where_clause += " AND "
             where_clause += f'"{column_name}" = :{key}'  # Use mapped column name
             bind_variables[key] = value  # Assign bind variable value
+
+    print(where_clause)
 
     germplasms = []
     
@@ -361,6 +374,7 @@ def get_germplasm():
                 count_sql = "SELECT COUNT(*) FROM V006_ACCESSION_BRAPI"
                 if where_clause:
                     count_sql += f" WHERE {where_clause}"
+                print(count_sql, bind_variables)
                 cursor.execute(count_sql, bind_variables)
                 res_total_count = cursor.fetchone()[0]  # Fetch the total count
 
@@ -509,7 +523,7 @@ def get_studies():
 
     try:
         # Using connection pooling for better performance
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             # Get number of rows
             with connection.cursor() as cursor:
                 sql = """SELECT COUNT(*) FROM V007_STUDY_BRAPI"""
@@ -557,7 +571,7 @@ def get_studies():
             study_db_ids_str = ', '.join(str(id) for id in study_db_ids)
 
             # Fetch environment parameters
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql_env_params = """SELECT "STUDYDBID", "PARAMETERNAME", "VALUE" 
                                          FROM V008_ENVIRONMENT_PARAMETERS_BRAPI 
@@ -574,7 +588,7 @@ def get_studies():
                                 study['environmentParameters'].append(environment_parameter)
 
             # Fetch observation variables
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql_obs_vars = """SELECT "STUDYDBID", "OBSERVATIONVARIABLEDBID" 
                                       FROM V009_OBSERVATION_VARIABLE_BRAPI 
@@ -702,7 +716,7 @@ def get_study_by_reference_id(reference_id):
     
     try:
         # Establish the database connection
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 # Ensure the placeholder is consistently named :studyDbId
                 sql = """
@@ -744,7 +758,7 @@ def get_study_by_reference_id(reference_id):
             where_clause = '"STUDYDBID" = :studyDbId'
         
             # Get environment parameters
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql_env_params = f"""SELECT "PARAMETERNAME", "VALUE" 
                                           FROM V008_ENVIRONMENT_PARAMETERS_BRAPI 
@@ -758,7 +772,7 @@ def get_study_by_reference_id(reference_id):
                         study['environmentParameters'].append(environmentParameter)
                 
             # Get observation variables
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql_obs_vars = f"""SELECT "OBSERVATIONVARIABLEDBID" 
                                         FROM V009_OBSERVATION_VARIABLE_BRAPI 
@@ -800,16 +814,11 @@ def get_study_by_reference_id(reference_id):
 
 
 
-
-
-
-
-
 @brapi_bp.route('/germplasm/<reference_id>')
 def get_germplasm_by_reference_id(reference_id):
     germplasm = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT "CROPNAME", "ID", "ACCENAME", "AGENT_ID", "ACCENUMB", "ACQDATE", "SAMPSTAT", "ORIGCTY", "DONORNUMB", "DONORCODE", "GENUS", "COORDUNCERT", "DECLATITUDE", "DECLONGITUDE", "INSTCODE", "ANCEST", "SPECIES", "SPAUTHOR", "STORAGE", "SUBTAXON", "SUBTAUTHOR" FROM V006_ACCESSION_BRAPI"""
                 sql += f""" WHERE "AGENT_ID" = '{reference_id}'"""
@@ -919,7 +928,7 @@ def get_attributes():
 
     res_total_count =0
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
                 if where_clause:
@@ -978,7 +987,7 @@ def get_attributes():
 def get_attribute_by_reference_id(reference_id):
     attribute = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "ATTRIBUTEDBID", "ATTRIBUTENAME", "METHOD", "TRAIT", "ATTRIBUTECATEGORY", "ATTRIBUTEDESCRIPTION" FROM V010_TRAIT_ATTRIBUTE_BRAPI"""
                 sql += f""" WHERE "ATTRIBUTEDBID" = {reference_id}"""
@@ -1050,7 +1059,7 @@ def get_attributevalues():
 
     attributevalues = []
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}") as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V011_TRAIT_VALUE_BRAPI"""
                 if where_clause:
@@ -1111,7 +1120,7 @@ def get_attributevalues():
 def get_attributevalue_by_reference_id(reference_id):
     attributevalue = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "ATTRIBUTENAME", "ATTRIBUTEVALUEDBID", "ADDITIONALINFO", "ATTRIBUTEDBID", "DETERMINEDDATE", "GERMPLASMDBID", "GERMPLASMNAME", "VALUE" FROM V011_TRAIT_VALUE_BRAPI""" 
                 sql += f""" WHERE "ATTRIBUTEVALUEDBID" = {reference_id}"""
@@ -1190,7 +1199,7 @@ def get_callsets():
 
     callSets = []
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM mv_brapi_samples"""
                 if where_clause:
@@ -1253,7 +1262,7 @@ def get_callsets():
 def get_callset_by_reference_id(reference_id):
     callSet = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "samplePUI", "studyDbId", "sampleDbId", "sampleName" AS "callSetName", "sampleTimestamp" FROM mv_brapi_samples"""
                 sql += f""" WHERE "samplePUI" = '{reference_id}' """
@@ -1333,7 +1342,7 @@ def get_scales():
 
     scales = []
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V017_SCALE_BRAPI"""
                 if where_clause:
@@ -1389,7 +1398,7 @@ def get_scales():
 def get_scale_by_reference_id(reference_id):
     scale = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "SCALEDBID", "SCALENAME" FROM V017_SCALE_BRAPI"""
                 sql += f""" WHERE "SCALEDBID" = '{reference_id}' """
@@ -1462,7 +1471,7 @@ def get_methods():
 
     methods = []
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V016_METHODS_BRAPI"""
                 if where_clause:
@@ -1520,7 +1529,7 @@ def get_methods():
 def get_method_by_reference_id(reference_id):
     method = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
                 sql += f""" WHERE "METHODDBID" = '{reference_id}' """
@@ -1596,7 +1605,7 @@ def get_traits():
 
     traits = []
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V015_TRAITS_BRAPI"""
                 if where_clause:
@@ -1656,7 +1665,7 @@ def get_traits():
 def get_trait_by_reference_id(reference_id):
     trait = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "TRAITDBID", "TRAITNAME", "ADDITIONALINFO", "MAINABBREVIATION", "STATUS", "TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
                 sql += f""" WHERE "TRAITDBID" = '{reference_id}' """
@@ -1729,7 +1738,7 @@ def get_variables():
     variables = []
 
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             # Get number of rows
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V014_VARIABLE_BRAPI"""
@@ -1766,7 +1775,7 @@ def get_variables():
                 where_clause += f'"METHODDBID" = \'{variable["observationVariableDbId"]}\''
                 
             # For every variable in paginated data get method
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
                     sql += f" WHERE {where_clause}"
@@ -1792,7 +1801,7 @@ def get_variables():
                 where_clause += f'"SCALEDBID" = \'{variable["observationVariableDbId"]}\''
                 
             # For every variable in paginated data get scale
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "SCALEDBID", "SCALENAME" FROM V017_SCALE_BRAPI"""
                     sql += f" WHERE {where_clause}"
@@ -1816,7 +1825,7 @@ def get_variables():
                 where_clause += f'"TRAITDBID" = \'{variable["observationVariableDbId"]}\''
                 
             # For every variable in paginated data get trait
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "TRAITDBID","TRAITNAME","ADDITIONALINFO","MAINABBREVIATION","STATUS","TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
                     sql += f" WHERE {where_clause}"
@@ -1877,7 +1886,7 @@ def get_variable_by_reference_id(reference_id):
     where_clause = f'"VARIABLEDBID" = \'{reference_id}\''
     
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","ADDITIONALINFO","COMMONCROPNAME","STATUS" FROM V014_VARIABLE_BRAPI"""
                 sql += f""" WHERE "OBSERVATIONVARIABLEDBID" = {reference_id}"""
@@ -1903,7 +1912,7 @@ def get_variable_by_reference_id(reference_id):
             where_clause = f'"METHODDBID" = \'{variable["observationVariableDbId"]}\''
         
             # For every variable in paginated data get method
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
                     sql += f" WHERE {where_clause}"
@@ -1922,7 +1931,7 @@ def get_variable_by_reference_id(reference_id):
             where_clause = f'"SCALEDBID" = \'{variable["observationVariableDbId"]}\''
         
             # For every variable in paginated data get scale
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "SCALEDBID","SCALENAME" FROM V017_SCALE_BRAPI"""
                     sql += f" WHERE {where_clause}"
@@ -1939,7 +1948,7 @@ def get_variable_by_reference_id(reference_id):
             where_clause = f'"TRAITDBID" = \'{variable["observationVariableDbId"]}\''
         
             # For every variable in paginated data get trait
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "TRAITDBID","TRAITNAME","ADDITIONALINFO","MAINABBREVIATION","STATUS","TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
                     sql += f" WHERE {where_clause}"
@@ -2014,7 +2023,7 @@ def get_observations():
     
     observations = []
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V012_OBSERVATION_UNITS_BRAPI"""
                 if where_clause:
@@ -2078,7 +2087,7 @@ def get_observations():
 def get_observation_by_reference_id(reference_id):
     observation = None
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
                 sql += f""" WHERE "OBSERVATIONUNITDBID" = '{reference_id}' """
@@ -2155,7 +2164,7 @@ def get_observationunits():
     observationunits = []
     
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             # Get number of rows
             with connection.cursor() as cursor:
                 sql = f"""SELECT COUNT(*) FROM V012_OBSERVATION_UNITS_BRAPI"""
@@ -2189,7 +2198,7 @@ def get_observationunits():
                 where_clause += f'"OBSERVATIONUNITDBID" = \'{observationunit["observationUnitDbId"]}\''
             
             # For every observationunit in paginated data get observations
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
                     sql += f" WHERE {where_clause}"
@@ -2253,7 +2262,7 @@ def get_observationunit_by_reference_id(reference_id):
     where_clause = f'"OBSERVATIONUNITDBID" = \'{reference_id}\''
     
     try:
-        with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+        with pool.acquire() as connection:
             with connection.cursor() as cursor:
                 sql = """SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","STUDYDBID","STUDYNAME" FROM V012_OBSERVATION_UNITS_BRAPI"""
                 sql += f""" WHERE "OBSERVATIONUNITDBID" = {reference_id}"""
@@ -2277,7 +2286,7 @@ def get_observationunit_by_reference_id(reference_id):
             where_clause = f'"OBSERVATIONUNITDBID" = \'{observationunit["observationUnitDbId"]}\''
         
             # For every observationunit in paginated data get observations
-            with oracledb.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, service_name=DB_SERVICE_NAME) as connection:
+            with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
                     sql += f" WHERE {where_clause}"
