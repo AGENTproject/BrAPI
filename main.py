@@ -12,6 +12,12 @@ load_dotenv()
 app = Flask(__name__)
 app.debug = True
 
+from flask import Flask, redirect, url_for
+
+@app.route('/favicon.ico')
+def serve_favicon():
+    return redirect(url_for('static', filename='favicon.ico'))
+
 #Blueprints
 with app.app_context():
     from brapi_bp import brapi_bp
