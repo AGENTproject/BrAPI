@@ -167,3 +167,5 @@ report_samples.html
 # instantclient
 instantclient-basic-linux.x64-23.7.0.25.01.zip
 
+# docker image tar file
+agent-brapi.tar

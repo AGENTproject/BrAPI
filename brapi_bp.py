@@ -305,13 +305,15 @@ def get_samples():
     except oracledb.DatabaseError as e:
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        samples = []                                       #return empty list on database eroor
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        samples = []                                       #return epty list on generic error
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
-          # Calculate total pages
+    # Calculate total pages
     total_pages = math.ceil(total_count / res_page_size)
 
     return jsonify({
@@ -465,12 +467,14 @@ def get_germplasm():
         # Log the database error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        germplasms = []  # Return empty list on database error
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log any other errors
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        germplasms = []  # Return empty list on generic error
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     # Calculate total pages
     res_total_pages = math.ceil(res_total_count / res_page_size)
@@ -497,7 +501,7 @@ import oracledb
 from flask import request, jsonify
 import math
 
-@brapi_bp.route('studies')
+@brapi_bp.route('/studies')
 def get_studies():
     res_context = None
     res_datafiles = []
@@ -605,12 +609,14 @@ def get_studies():
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        studies = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        studies = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     # Calculate number of pages
     res_total_pages = math.ceil(res_total_count / res_page_size)
@@ -684,12 +690,14 @@ def get_sample_by_reference_id(reference_id):
         # Log the database error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        sample = None  # Return None if a database error occurs
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log any other error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        sample = None  # Return None if any other error occurs
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     # Respond based on whether a sample was found
     if sample:
@@ -786,13 +794,15 @@ def get_study_by_reference_id(reference_id):
         # Log any database errors
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        study = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     except Exception as e:
         # Log any general exceptions
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        study = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     # Return the result or error
     if study:
@@ -876,14 +886,14 @@ def get_germplasm_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        germplasm = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        germplasm = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if germplasm:
         return jsonify({
@@ -955,14 +965,14 @@ def get_attributes():
          # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        attributes = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        attributes = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -1009,14 +1019,14 @@ def get_attribute_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        attribute = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        attribute = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if attribute:
         return jsonify({
@@ -1088,14 +1098,14 @@ def get_attributevalues():
          # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        attributevalues = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        attributevalues = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -1144,14 +1154,14 @@ def get_attributevalue_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        attributevalue = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        attributevalue = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
         
     
     if attributevalue:
@@ -1230,14 +1240,14 @@ def get_callsets():
          # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        callSets = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        callSets = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -1288,14 +1298,14 @@ def get_callset_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        callSet = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        callSet = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if callSet:
         return jsonify({
@@ -1366,14 +1376,14 @@ def get_scales():
          # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        scales = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        scales = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -1417,14 +1427,14 @@ def get_scale_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        scale = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        scale = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if scale:
         return jsonify({
@@ -1497,14 +1507,14 @@ def get_methods():
          # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        methods = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        methods = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -1550,14 +1560,14 @@ def get_method_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        method = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        method = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if method:
         return jsonify({
@@ -1633,14 +1643,14 @@ def get_traits():
          # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        traits = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        traits = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -1689,14 +1699,14 @@ def get_trait_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        trait = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        trait = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if trait:
         return jsonify({
@@ -1849,14 +1859,14 @@ def get_variables():
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        variables = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        variables = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     # Calculate number of pages
     res_total_pages = math.ceil(res_total_count / res_page_size)
@@ -1969,14 +1979,14 @@ def get_variable_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        variable = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        variable = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if variable:
         return jsonify({
@@ -2055,14 +2065,14 @@ def get_observations():
          # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        observations = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        observations = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     
     res_total_pages = math.ceil(res_total_count / res_page_size)
 
@@ -2115,14 +2125,14 @@ def get_observation_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        observation = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        observation = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if observation:
         return jsonify({
@@ -2225,14 +2235,14 @@ def get_observationunits():
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        observationunits = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        observationunits = []
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     # Calculate number of pages
     res_total_pages = math.ceil(res_total_count / res_page_size)
@@ -2309,14 +2319,14 @@ def get_observationunit_by_reference_id(reference_id):
         # Log the error
         from flask import current_app as app
         app.logger.error(f"Database error: {e}")
-        # Return empty list on database error
-        observationunit = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
     except Exception as e:
         # Log the error
         from flask import current_app as app
         app.logger.error(f"An error occurred: {e}")
-        # Return empty list on generic error
-        observationunit = None
+        # Return internal server error 500
+        return jsonify("500 Internal Server Error"), 500
 
     if observationunit:
         return jsonify({
