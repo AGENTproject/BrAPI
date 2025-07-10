@@ -122,7 +122,21 @@ def server_info():
                     "contentTypes": ["application/json"],
                     "dataTypes": ["application/json"],
                     "methods": ["GET", ],
+                    "service": "samples/{sampleDbId}",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
                     "service": "callsets",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "callsets/{callSetDbId}",
                     "versions": ["2.1"]
                 },
                 {
@@ -136,7 +150,21 @@ def server_info():
                     "contentTypes": ["application/json"],
                     "dataTypes": ["application/json"],
                     "methods": ["GET", ],
+                    "service": "attributes/{attributeDbId}",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
                     "service": "attributevalues",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "attributevalues/{attributeValueDbId}",
                     "versions": ["2.1"]
                 },
                 {
@@ -150,7 +178,21 @@ def server_info():
                     "contentTypes": ["application/json"],
                     "dataTypes": ["application/json"],
                     "methods": ["GET", ],
+                    "service": "germplasm/{germplasmDbId}",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
                     "service": "studies",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "studies/{studyDbId}",
                     "versions": ["2.1"]
                 },
                 {
@@ -164,7 +206,21 @@ def server_info():
                     "contentTypes": ["application/json"],
                     "dataTypes": ["application/json"],
                     "methods": ["GET", ],
+                    "service": "methods/{methodDbId}",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
                     "service": "observationunits",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "observationunits/{observationUnitDbId}",
                     "versions": ["2.1"]
                 },
                 {
@@ -178,7 +234,21 @@ def server_info():
                     "contentTypes": ["application/json"],
                     "dataTypes": ["application/json"],
                     "methods": ["GET", ],
+                    "service": "variables/{observationVariableDbId}",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
                     "service": "observations",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "observations/{observationDbId}",
                     "versions": ["2.1"]
                 },
                 {
@@ -192,7 +262,21 @@ def server_info():
                     "contentTypes": ["application/json"],
                     "dataTypes": ["application/json"],
                     "methods": ["GET", ],
+                    "service": "scales/{scaleDbId}",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
                     "service": "traits",
+                    "versions": ["2.1"]
+                },
+                {
+                    "contentTypes": ["application/json"],
+                    "dataTypes": ["application/json"],
+                    "methods": ["GET", ],
+                    "service": "traits/{traitDbId}",
                     "versions": ["2.1"]
                 },
 
