@@ -221,6 +221,10 @@ def handle_lob(value):
         return value.read()
     return value
 
+def chunk_list(lst, chunk_size):
+    """Yield successive chunks from lst."""
+    for i in range(0, len(lst), chunk_size):
+        yield lst[i:i + chunk_size]
 
 @brapi_bp.route('samples')
 def get_samples():
@@ -550,11 +554,11 @@ def get_studies():
                 # Calculate the offset for pagination
                 bind_variables['offset'] = res_page_size * res_current_page
                 bind_variables['page_size'] = res_page_size
-
+                
                 cursor.execute(sql, bind_variables)
                 for r in cursor.fetchall():
                     study = {
-                        'studyDbId': r[0],
+                        'studyDbId': str(r[0]),
                         'studyName': r[1],
                         'additionalInfo': r[2],
                         'commonCropName': r[3],
@@ -568,26 +572,42 @@ def get_studies():
                     }
                     studies.append(study)
         
+               
+
         # After fetching studies, retrieve environment parameters and observation variables
         if studies:
             # Build where_clause for fetching environment parameters and observation variables
             study_db_ids = [study['studyDbId'] for study in studies]
-            study_db_ids_str = ', '.join(str(id) for id in study_db_ids)
-
+            study_db_ids_chunks = list(chunk_list(study_db_ids, 1000))
+            study_db_ids_chunks_str = []
+            
+            for chunk in study_db_ids_chunks:
+                chunk_str = """"STUDYDBID" IN ({})""".format(', '.join(str(id) for id in chunk))
+                study_db_ids_chunks_str.append(chunk_str)
+                
+            study_db_ids_str = ' OR '.join(str(id) for id in study_db_ids_chunks_str)
+                
+            
             # Fetch environment parameters
             with pool.acquire() as connection:
                 with connection.cursor() as cursor:
                     sql_env_params = """SELECT "STUDYDBID", "PARAMETERNAME", "VALUE" 
                                          FROM V008_ENVIRONMENT_PARAMETERS_BRAPI 
-                                         WHERE "STUDYDBID" IN ({})""".format(study_db_ids_str)
+                                         WHERE {}""".format(study_db_ids_str)
+                    
+                    
+                                         
+                    
                     cursor.execute(sql_env_params)
                     for r in cursor.fetchall():
-                        study_db_id = r[0]
+                        study_db_id = str(r[0])
                         environment_parameter = {
                             "parameterName": r[1],
                             "value": r[2]
                         }
+                        
                         for study in studies:
+                            
                             if study["studyDbId"] == study_db_id:
                                 study['environmentParameters'].append(environment_parameter)
 
@@ -596,11 +616,11 @@ def get_studies():
                 with connection.cursor() as cursor:
                     sql_obs_vars = """SELECT "STUDYDBID", "OBSERVATIONVARIABLEDBID" 
                                       FROM V009_OBSERVATION_VARIABLE_BRAPI 
-                                      WHERE "STUDYDBID" IN ({})""".format(study_db_ids_str)
+                                      WHERE {}""".format(study_db_ids_str)
                     cursor.execute(sql_obs_vars)
                     for r in cursor.fetchall():
-                        study_db_id = r[0]
-                        observation_variable_db_id = r[1]
+                        study_db_id = str(r[0])
+                        observation_variable_db_id = str(r[1])
                         for study in studies:
                             if study["studyDbId"] == study_db_id:
                                 study['observationVariableDbIds'].append(observation_variable_db_id)
@@ -746,7 +766,7 @@ def get_study_by_reference_id(reference_id):
                 if len(results) > 0:
                     result = results[0]
                     study = {
-                        'studyDbId': result[0],
+                        'studyDbId': str(result[0]),
                         'studyName': result[1],
                         'additionalInfo': result[2],
                         'commonCropName': result[3],
@@ -787,7 +807,7 @@ def get_study_by_reference_id(reference_id):
                                         WHERE {where_clause}"""
                     cursor.execute(sql_obs_vars, {'studyDbId': study["studyDbId"]})
                     for r in cursor.fetchall():
-                        observationVariableDbId = r[0]
+                        observationVariableDbId = str(r[0])
                         study['observationVariableDbIds'].append(observationVariableDbId)
 
     except oracledb.DatabaseError as e:
@@ -1630,7 +1650,7 @@ def get_traits():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     trait = {
-                        'traitDbId': r[0],
+                        'traitDbId': str(r[0]),
                         'traitName': r[1],
                         'additionalInfo': r[2],
                         'mainAbbreviation': r[3],
@@ -1685,7 +1705,7 @@ def get_trait_by_reference_id(reference_id):
                 if len(results) > 0:
                     result = results[0]
                     trait = {
-                        'traitDbId': result[0],
+                        'traitDbId': str(result[0]),
                         'traitName': result[1],
                         'additionalInfo': result[2],
                         'mainAbbreviation': result[3],
@@ -2212,6 +2232,7 @@ def get_observationunits():
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
                     sql += f" WHERE {where_clause}"
+                    print(sql)
                     for r in cursor.execute(sql):
                         observationunitDbId = r[0]
                         observation = {
