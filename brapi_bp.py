@@ -1048,7 +1048,7 @@ def get_attributes():
             if is_number(value):
                  where_clause += f'"{key.upper()}" = \'{value}\'' 
             else:
-                where_clause +=  f'"{key}" = \'{value}\''
+                where_clause +=  f'"{key.upper()}" = \'{value}\''
 
     attributes = []
 
