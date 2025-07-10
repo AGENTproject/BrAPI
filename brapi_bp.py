@@ -745,6 +745,9 @@ def get_studies():
 
 @brapi_bp.route('/samples/<reference_id>')
 def get_sample_by_reference_id(reference_id):
+    # sampleDbId is a number field so return 404 for all non numeric searches
+    if not reference_id.isnumeric():
+        return jsonify("sample not found!"), 404
     sample = None
     try:
         # Use pooled connection
@@ -760,6 +763,7 @@ def get_sample_by_reference_id(reference_id):
                     FROM mv_brapi_samples
                     WHERE "sampleDbId" = :reference_id
                 """
+                print(sql)
                 # Execute query with bind variable
                 cursor.execute(sql, {'reference_id': reference_id})
                 results = cursor.fetchall()
