@@ -1069,7 +1069,7 @@ def get_attributes():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     attribute = {
-                        'attributeDbId': r[0], 
+                        'attributeDbId': str(r[0]), 
                         'attributeName': r[1], 
                         'method': r[2], 
                         'trait': r[3], 
@@ -1111,6 +1111,10 @@ def get_attributes():
 
 @brapi_bp.route('/attributes/<reference_id>')
 def get_attribute_by_reference_id(reference_id):
+    # attributeDbId is a number field so return 404 for all non numeric searches
+    if not reference_id.isnumeric():
+        return jsonify("attribute not found!"), 404
+    sample = None
     attribute = None
     try:
         with pool.acquire() as connection:
