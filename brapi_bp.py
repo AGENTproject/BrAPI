@@ -311,7 +311,7 @@ def chunk_list(lst, chunk_size):
         yield lst[i:i + chunk_size]
 
 def handle_non_numeric_ids(db_id):
-    # all database ids should be numeric or they are invalid and should be converrted to None
+    # certain database ids should be numeric or they are invalid and should be converted to None
     if db_id.isnumeric():
         return (db_id)
     else:
@@ -1342,8 +1342,8 @@ def get_callsets():
                     callSet = {
                         'callSetDbId': str(r[0]), # Mapping samplePUI to callSetDbId
                         'callSetName': r[3],
-                        'sampleDbId': str(r[1]),
-                        'studyDbId': r[4],
+                        'sampleDbId': handle_non_numeric_ids(str(r[1])),
+                        'studyDbId': handle_non_numeric_ids(str(r[4])),
                         'created': r[2],
                         'updated': r[2],  # Assuming the sampleTimestamp for both created and updated dates
                         'additionalInfo': {},  # If there are additional attributes to include
@@ -1390,7 +1390,7 @@ def get_callset_by_reference_id(reference_id):
     try:
         with pool.acquire() as connection:
             with connection.cursor() as cursor:
-                sql = """SELECT "samplePUI", "studyDbId", "sampleDbId", "sampleName" AS "callSetName", "sampleTimestamp" FROM mv_brapi_samples"""
+                sql = """SELECT "samplePUI", "sampleDbId", "sampleTimestamp", "sampleName" AS "callSetName", "studyDbId" FROM mv_brapi_samples"""
                 sql += f""" WHERE "samplePUI" = '{reference_id}' """
                 cursor.execute(sql)
                 results = cursor.fetchall()
@@ -1399,8 +1399,8 @@ def get_callset_by_reference_id(reference_id):
                     callSet = {
                         'callSetDbId': str(result[0]),
                         'callSetName': result[3],
-                        'sampleDbId': str(result[1]),
-                        'studyDbId': result[4],
+                        'sampleDbId': handle_non_numeric_ids(str(result[1])),
+                        'studyDbId': handle_non_numeric_ids(str(result[4])),
                         'created': result[2],
                         'updated': result[2],
                         'additionalInfo': {},
