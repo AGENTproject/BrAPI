@@ -321,18 +321,29 @@ def handle_non_numeric_ids(db_id):
 @brapi_bp.route('samples')
 def get_samples():
 
-    # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
-
     # Construct the WHERE clause and bind variables
     where_clause = ""
     bind_variables = {}
     query_parameters = request.args.to_dict()
     
+    # convert all keys to upper case to ignore case sensitivity
+    query_parameters = dict(map(lambda x: (x[0].upper(), x[1]), query_parameters.items()))
+
+    # set default pagination variables
+    res_page_size = 1000
+    res_current_page = 0
+    
+    # Get page size and page number from query parameters
+    if "PAGESIZE" in list(query_parameters.keys()):
+        res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+    if "CURRENTPAGE" in list(query_parameters.keys()):
+        res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+    if "PAGE" in list(query_parameters.keys()):
+        res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
+    
     # Build the WHERE clause with bind variables
     for key, value in query_parameters.items():
-        if key not in ['pageSize', 'currentPage', 'page']: #Exclude pagination keys
+        if key not in ['PAGESIZE', 'CURRENTPAGE', 'PAGE']: #Exclude pagination keys
             if where_clause:
                 where_clause += " AND "
             if is_number(value):                      # Handle numeric value
@@ -342,20 +353,18 @@ def get_samples():
                 where_clause += f'"{key}" = :{key}'   # Use bind variables
                 bind_variables[key] = value           # Assign bind variable values
 
-    print(where_clause)
-
      # Base SQL query without pagination
     base_sql = f"""
-                SELECT "additionalInfo", "column", "externalReferences", "germplasmDbId", 
-                       "observationUnitDbId", "plateDbId", "plateName", "programDbId", "row", 
-                       "sampleBarcode", "sampleDbId", "sampleDescription", "sampleGroupDbId", 
-                       "sampleName", "samplePUI", "sampleTimestamp", "sampleType", "studyDbId", 
-                       "takenBy", "tissueType", "trialDbId", "well"
-                FROM mv_brapi_samples
+                SELECT "additionalInfo" AS "ADDITIONALINFO", "column" AS "COLUMN", "externalReferences" AS "EXTERNALREFERENCES", "germplasmDbId" AS "GERMPLASMDBID", 
+                       "observationUnitDbId" AS "OBSERVATIONUNITDBID", "plateDbId" AS "PLATEDBID", "plateName" AS "PLATENAME", "programDbId" AS "PROGRAMDBID", "row" AS "ROW", 
+                       "sampleBarcode" AS "SAMPLEBARCODE", "sampleDbId" AS "SAMPLEDBID", "sampleDescription" AS "SAMPLEDESCRIPTION", "sampleGroupDbId" AS "SAMPLEGROUPDBID", 
+                       "sampleName" AS "SAMPLENAME", "samplePUI" AS "SAMPLEPUI", "sampleTimestamp" AS "SAMPLETIMESTAMP", "sampleType" AS "SAMPLETYPE", "studyDbId" AS "STUDYDBID", 
+                       "takenBy" AS "TAKENBY", "tissueType" AS "TISSUETYPE", "trialDbId" AS "TRIALDBID", "well" AS "WELL"
+                FROM MV_BRAPI_SAMPLES
                 """
     
     # SQL for counting total rows
-    count_sql = f"SELECT COUNT(*) FROM mv_brapi_samples"
+    count_sql = f"SELECT COUNT(*) FROM (" + base_sql + ")"
     if where_clause:
         count_sql += f" WHERE {where_clause}"
 
@@ -370,20 +379,18 @@ def get_samples():
             with connection.cursor() as cursor:
                 
                 
-            #excute the query with the bind_variables dictionary
+                #excute the query with the bind_variables dictionary
                 cursor.execute(count_sql, bind_variables)
                 total_count = cursor.fetchone()[0]  # Get the total count from the first row
 
-             # Prepare the SQL statement for paginated results
-                paginated_sql = base_sql
+                # Prepare the SQL statement for paginated results
+                paginated_sql = f"SELECT * FROM (" + base_sql + ")"
                 if where_clause:
                     paginated_sql += f" WHERE {where_clause}"
 
-                 # Add OFFSET and LIMIT for pagination
-                paginated_sql += f""" ORDER BY "sampleDbId" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
-                
-                print(paginated_sql)
-                
+                # Add OFFSET and LIMIT for pagination
+                paginated_sql += f""" ORDER BY "SAMPLEDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                                
                  #Execute the paginated SQL statement
                 cursor.execute(paginated_sql, bind_variables)
 
