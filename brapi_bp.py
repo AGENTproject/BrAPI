@@ -298,6 +298,13 @@ def is_number(s):
         return True
     except ValueError:
         return False
+        
+def is_int(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
 
 def handle_lob(value):
     """Helper function to convert LOB to string."""
@@ -336,11 +343,14 @@ def get_samples():
     
     # Get page size and page number from query parameters
     if "PAGESIZE" in list(query_parameters.keys()):
-        res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+        if is_int((query_parameters["PAGESIZE"])):
+            res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
     if "CURRENTPAGE" in list(query_parameters.keys()):
-        res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+        if is_int((query_parameters["CURRENTPAGE"])):
+            res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
     if "PAGE" in list(query_parameters.keys()):
-        res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
+        if is_int((query_parameters["PAGE"])):
+            res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
     
     # Build the WHERE clause with bind variables
     for key, value in query_parameters.items():
@@ -1331,11 +1341,14 @@ def get_callsets():
     
     # Get page size and page number from query parameters
     if "PAGESIZE" in list(query_parameters.keys()):
-        res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+        if is_int((query_parameters["PAGESIZE"])):
+            res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
     if "CURRENTPAGE" in list(query_parameters.keys()):
-        res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+        if is_int((query_parameters["CURRENTPAGE"])):
+            res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
     if "PAGE" in list(query_parameters.keys()):
-        res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
+        if is_int((query_parameters["PAGE"])):
+            res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
 
 
     # Construct the WHERE clause based on query parameters
