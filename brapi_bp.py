@@ -321,9 +321,6 @@ def handle_non_numeric_ids(db_id):
 @brapi_bp.route('samples')
 def get_samples():
 
-    # Construct the WHERE clause and bind variables
-    where_clause = ""
-    bind_variables = {}
     query_parameters = request.args.to_dict()
     
     # convert all keys to upper case to ignore case sensitivity
@@ -332,6 +329,10 @@ def get_samples():
     # set default pagination variables
     res_page_size = 1000
     res_current_page = 0
+    
+    # Construct the WHERE clause and bind variables
+    where_clause = ""
+    bind_variables = {}
     
     # Get page size and page number from query parameters
     if "PAGESIZE" in list(query_parameters.keys()):
@@ -1310,44 +1311,60 @@ def get_attributevalue_by_reference_id(reference_id):
 
 @brapi_bp.route('/callsets')
 def get_callsets():
-    callSetDbId = request.args.get('callSetDbId')
-    if callSetDbId:
+    query_parameters = request.args.to_dict()
+    
+    # convert all keys to upper case to ignore case sensitivity
+    query_parameters = dict(map(lambda x: (x[0].upper(), x[1]), query_parameters.items()))
+    
+    
+    if "callSetDbId" in list(query_parameters.keys()):
+        callSetDbId = query_parameters["callSetDbId"]
         callSet = None
     
     res_context = None
     res_datafiles = []
     res_status = []
-
+    
+    # set default pagination variables
+    res_page_size = 1000
+    res_current_page = 0
+    
     # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+    if "PAGESIZE" in list(query_parameters.keys()):
+        res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+    if "CURRENTPAGE" in list(query_parameters.keys()):
+        res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+    if "PAGE" in list(query_parameters.keys()):
+        res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
+
 
     # Construct the WHERE clause based on query parameters
     where_clause = ""
-    query_parameters = request.args.to_dict()
     for key, value in query_parameters.items():
-        if key not in ['pageSize', 'currentPage', 'page']:
+        if key not in ['PAGESIZE', 'CURRENTPAGE', 'PAGE']:
             if where_clause:
                 where_clause += " AND "
-            if key == 'callSetDbId':
-                 where_clause += f'UPPER(TRIM("samplePUI")) = UPPER(TRIM(\'{value}\'))'
+            if key == 'CALLSETDBID':
+                 where_clause += f'UPPER(TRIM("SAMPLEPUI")) = UPPER(TRIM(\'{value}\'))'
             else:
                  where_clause += f'"{key}" = \'{value}\''
+
+    print(where_clause)
 
     callSets = []
     try:
         with pool.acquire() as connection:
             with connection.cursor() as cursor:
-                sql = f"""SELECT COUNT(*) FROM mv_brapi_samples"""
+                sql = f"""SELECT COUNT(*) FROM (SELECT "samplePUI" AS "SAMPLEPUI", "sampleDbId" AS "SAMPLEDBID", "sampleTimestamp" AS "SAMPLETIMESTAMP", "sampleName" AS "CALLSETNAME", "studyDbId" AS "STUDYDBID" FROM MV_BRAPI_SAMPLES)"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
                 cursor.execute(sql)
                 res_total_count = cursor.fetchall()[0][0]
             with connection.cursor() as cursor:
-                sql = f"""SELECT "samplePUI", "sampleDbId", "sampleTimestamp", "sampleName" AS "callSetName", "studyDbId" FROM mv_brapi_samples"""
+                sql = f"""SELECT * FROM (SELECT "samplePUI" AS "SAMPLEPUI", "sampleDbId" AS "SAMPLEDBID", "sampleTimestamp" AS "SAMPLETIMESTAMP", "sampleName" AS "CALLSETNAME", "studyDbId" AS "STUDYDBID" FROM MV_BRAPI_SAMPLES)"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
-                sql += f""" ORDER BY "samplePUI" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
+                sql += f""" ORDER BY "SAMPLEPUI" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     callSet = {
