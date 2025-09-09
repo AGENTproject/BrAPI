@@ -1967,22 +1967,38 @@ def get_trait_by_reference_id(reference_id):
         
 @brapi_bp.route('variables')
 def get_variables():
+    query_parameters = request.args.to_dict()
+    
+    # convert all keys to upper case to ignore case sensitivity
+    query_parameters = dict(map(lambda x: (x[0].upper(), x[1]), query_parameters.items()))
+    
     res_context = None
     res_datafiles = []
     res_status = []
 
+    # set default pagination variables
+    res_page_size = 1000
+    res_current_page = 0
+
     # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+    if "PAGESIZE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGESIZE"])):
+            res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+    if "CURRENTPAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["CURRENTPAGE"])):
+            res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+    if "PAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGE"])):
+            res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
 
     # Construct the WHERE clause based on query parameters
     where_clause = ""
-    query_parameters = request.args.to_dict()
+    
     for key, value in query_parameters.items():
-        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'PAGE':
             if where_clause:
                 where_clause += " AND "
-            where_clause += f'"{key.upper()}" = \'{value}\''
+            where_clause += f'"{key}" = \'{value}\''
     
     variables = []
 
@@ -2000,12 +2016,11 @@ def get_variables():
                 sql = f"""SELECT "OBSERVATIONVARIABLEDBID", "OBSERVATIONVARIABLENAME", "ADDITIONALINFO", "COMMONCROPNAME", "STATUS" FROM V014_VARIABLE_BRAPI"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
-                print (sql)
                 sql += f""" ORDER BY "OBSERVATIONVARIABLEDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
                 for r in cursor.execute(sql):
                     variable = {
                         'method': {}, 
-                        'observationVariableDbId': r[0], 
+                        'observationVariableDbId': str(r[0]), 
                         'observationVariableName': r[1], 
                         'scale': {}, 
                         'trait': {}, 
@@ -2028,10 +2043,9 @@ def get_variables():
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
                     sql += f" WHERE {where_clause}"
-                    print (sql)
                     for r in cursor.execute(sql):
                         method = {
-                            "methodDbId": r[0], 
+                            "methodDbId": str(r[0]), 
                             "methodName": r[1],
                             "bibliographicalReference": r[2],
                             "description": r[3],
@@ -2054,10 +2068,9 @@ def get_variables():
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "SCALEDBID", "SCALENAME" FROM V017_SCALE_BRAPI"""
                     sql += f" WHERE {where_clause}"
-                    print (sql)
                     for r in cursor.execute(sql):
                         scale = {
-                            "scaleDbId": r[0], 
+                            "scaleDbId": str(r[0]), 
                             "scaleName": r[1],
                         }
                         # TODO what happends if there is more thean one scale found?
@@ -2078,10 +2091,9 @@ def get_variables():
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "TRAITDBID","TRAITNAME","ADDITIONALINFO","MAINABBREVIATION","STATUS","TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
                     sql += f" WHERE {where_clause}"
-                    print (sql)
                     for r in cursor.execute(sql):
                         trait = {
-                            "traitDbId": r[0], 
+                            "traitDbId": str(r[0]), 
                             "traitName": r[1],
                             "additionalInfo": r[2],
                             "mainAbbreviation": r[3],
@@ -2145,7 +2157,7 @@ def get_variable_by_reference_id(reference_id):
                     result = results[0]
                     variable = {
                         'method': {}, 
-                        'observationVariableDbId': result[0], 
+                        'observationVariableDbId': str(result[0]), 
                         'observationVariableName': result[1], 
                         'scale': {}, 
                         'trait': {}, 
@@ -2168,7 +2180,7 @@ def get_variable_by_reference_id(reference_id):
                     print (sql)
                     for r in cursor.execute(sql):
                         method = {
-                            "methodDbId": r[0], 
+                            "methodDbId": str(r[0]), 
                             "methodName": r[1],
                             "bibliographicalReference": r[2],
                             "description": r[3],
@@ -2187,7 +2199,7 @@ def get_variable_by_reference_id(reference_id):
                     print (sql)
                     for r in cursor.execute(sql):
                         scale = {
-                            "scaleDbId": r[0], 
+                            "scaleDbId": str(r[0]), 
                             "scaleName": r[1],
                         }
                         # TODO what happends if there is more than one scale found?
@@ -2204,7 +2216,7 @@ def get_variable_by_reference_id(reference_id):
                     print (sql)
                     for r in cursor.execute(sql):
                         trait = {
-                            "traitDbId": r[0], 
+                            "traitDbId": str(r[0]), 
                             "traitName": r[1],
                             "additionalInfo": r[2],
                             "mainAbbreviation": r[3],
