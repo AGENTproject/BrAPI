@@ -2258,37 +2258,51 @@ def get_variable_by_reference_id(reference_id):
         
 @brapi_bp.route('/observations')
 def get_observations():
-    observationDbId = request.args.get('observationDbId')
-    if observationDbId:
-        observation = None
+    query_parameters = request.args.to_dict()
+    
+    # convert all keys to upper case to ignore case sensitivity
+    query_parameters = dict(map(lambda x: (x[0].upper(), x[1]), query_parameters.items()))
     
     res_context = None
     res_datafiles = []
     res_status = []
-    
+
+    # set default pagination variables
+    res_page_size = 1000
+    res_current_page = 0
+
     # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+    if "PAGESIZE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGESIZE"])):
+            res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+    if "CURRENTPAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["CURRENTPAGE"])):
+            res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+    if "PAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGE"])):
+            res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
+
+    COLUMN_MAP = {
+        "OBSERVATIONDBID":"OBSERVATIONUNITDBID"
+    }
 
     # Construct the WHERE clause based on query parameters
     where_clause = ""
-    query_parameters = request.args.to_dict()
     for key, value in query_parameters.items():
-        if key not in ['pageSize', 'currentPage', 'page']:
+        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'PAGE':
+            column_name = COLUMN_MAP.get(key, key)  # Map to actual column or use the key directly
             if where_clause:
                 where_clause += " AND "
-            if key == 'observationDbId':
-                 where_clause += f'UPPER(TRIM("OBSERVATIONUNITDBID")) = UPPER(TRIM(\'{value}\'))'
-            else:
-                 where_clause += f'"{key}" = \'{value}\''
+            where_clause += f'"{column_name}" = \'{value}\''
     
     observations = []
     try:
         with pool.acquire() as connection:
             with connection.cursor() as cursor:
-                sql = f"""SELECT COUNT(*) FROM V012_OBSERVATION_UNITS_BRAPI"""
+                sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
+                sql = f"""SELECT COUNT(*) FROM (""" + sql + """)"""
                 cursor.execute(sql)
                 res_total_count = cursor.fetchall()[0][0]
             with connection.cursor() as cursor:
@@ -2299,14 +2313,14 @@ def get_observations():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     observation = {
-                        'observationDbId': r[0],
+                        'observationDbId': str(r[0]),
                         'additionalInfo': r[1],
-                        'germplasmDbId': r[2],
+                        'germplasmDbId': str(r[2]),
                         'observationTimeStamp': r[3],
-                        'observationUnitDbId': r[0],
-                        'observationVariableDbId': r[4],
+                        'observationUnitDbId': str(r[0]),
+                        'observationVariableDbId': str(r[4]),
                         'observationVariableName': r[5],
-                        'studyDbId': r[6],
+                        'studyDbId': str(r[6]),
                         'uploadedBy': r[7],
                         'value': r[8],
                     }
@@ -2358,14 +2372,14 @@ def get_observation_by_reference_id(reference_id):
                 if len(results) > 0:
                     result = results[0]
                     observation = {
-                        'observationDbId': result[0],
+                        'observationDbId': str(result[0]),
                         'additionalInfo': result[1],
-                        'germplasmDbId': result[2],
+                        'germplasmDbId': str(result[2]),
                         'observationTimeStamp': result[3],
-                        'observationUnitDbId': result[0],
-                        'observationVariableDbId': result[4],
+                        'observationUnitDbId': str(result[0]),
+                        'observationVariableDbId': str(result[4]),
                         'observationVariableName': result[5],
-                        'studyDbId': result[6],
+                        'studyDbId': str(result[6]),
                         'uploadedBy': result[7],
                         'value': result[8],
                     }
