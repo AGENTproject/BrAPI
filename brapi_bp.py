@@ -817,9 +817,6 @@ def get_studies():
 
 @brapi_bp.route('/samples/<reference_id>')
 def get_sample_by_reference_id(reference_id):
-    # sampleDbId is a number field so return 404 for all non numeric searches
-    if not reference_id.isnumeric():
-        return jsonify("sample not found!"), 404
     sample = None
     try:
         # Use pooled connection
@@ -900,9 +897,6 @@ def get_sample_by_reference_id(reference_id):
 
 @brapi_bp.route('/studies/<reference_id>')
 def get_study_by_reference_id(reference_id):
-    # studyDbId is a number field so return 404 for all non numeric searches
-    if not reference_id.isnumeric():
-        return jsonify("study not found!"), 404
     study = None
     
     try:
@@ -1193,9 +1187,6 @@ def get_attributes():
 
 @brapi_bp.route('/attributes/<reference_id>')
 def get_attribute_by_reference_id(reference_id):
-    # attributeDbId is a number field so return 404 for all non numeric searches
-    if not reference_id.isnumeric():
-        return jsonify("attribute not found!"), 404
     sample = None
     attribute = None
     try:
@@ -1346,9 +1337,6 @@ def get_attributevalues():
 
 @brapi_bp.route('/attributevalues/<reference_id>')
 def get_attributevalue_by_reference_id(reference_id):
-    # attributeDbId is a number field so return 404 for all non numeric searches
-    if not reference_id.isnumeric():
-        return jsonify("attribute not found!"), 404
     attributevalue = None
     try:
         with pool.acquire() as connection:
