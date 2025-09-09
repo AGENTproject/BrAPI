@@ -450,27 +450,58 @@ def get_samples():
 
 @brapi_bp.route('germplasm')
 def get_germplasm():
+    query_parameters = request.args.to_dict()
+    
+    # convert all keys to upper case to ignore case sensitivity
+    query_parameters = dict(map(lambda x: (x[0].upper(), x[1]), query_parameters.items()))
+    
+    # if BIOLOGICALSTATUSOFACCESSIONDESCRIPTION is in keys, convert to BIOLOGICALSTATUSOFACCESSIONCODE using the lookup table
+    if "BIOLOGICALSTATUSOFACCESSIONDESCRIPTION" in list(query_parameters.keys()):
+        bio_status_desc = query_parameters["BIOLOGICALSTATUSOFACCESSIONDESCRIPTION"]
+        if bio_status_desc in FAO_SAMPSTAT_CODES.values():
+            bio_status_code = list(FAO_SAMPSTAT_CODES.keys())[list(FAO_SAMPSTAT_CODES.values()).index(bio_status_desc)]
+        else:
+            bio_status_code = -1
+        del query_parameters["BIOLOGICALSTATUSOFACCESSIONDESCRIPTION"]
+        query_parameters["BIOLOGICALSTATUSOFACCESSIONCODE"] = bio_status_code
+    
     res_context = None
     res_datafiles = []
     res_status = []
 
+    # set default pagination variables
+    res_page_size = 1000
+    res_current_page = 0
+
     # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+    if "PAGESIZE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGESIZE"])):
+            res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+    if "CURRENTPAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["CURRENTPAGE"])):
+            res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+    if "PAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGE"])):
+            res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
 
     # Construct the WHERE clause and bind variables based on query parameters
     where_clause = ""
     bind_variables = {}
-    query_parameters = request.args.to_dict()
 
     COLUMN_MAP = {
-        "commonCropName": "Wheat",
-        "germplasmDbId":"AGENT_ID"
-        # Add other mappings as needed
+        "COMMONCROPNAME": "CROPNAME",
+        "ACCESSIONNUMBER":"ACCENUMB",
+        "BIOLOGICALSTATUSOFACCESSIONCODE":"SAMPSTAT",
+        "DEFAULTDISPLAYNAME":"ACCENAME",
+        "SPECIESAUTHORITY":"SPAUTHOR",
+        "INSTITUTECODE":"INSTCODE",
+        "PEDIGREE":"ANCEST",
+        "COUNTRYOFORIGINCODE":"ORIGCTY",
+        "GERMPLASMDBID":"AGENT_ID"
     }
 
     for key, value in query_parameters.items():
-        if key not in ['pageSize', 'currentPage', 'page']:  # Exclude pagination keys
+        if key not in ['PAGESIZE', 'CURRENTPAGE', 'PAGE']:  # Exclude pagination keys
             column_name = COLUMN_MAP.get(key, key)  # Map to actual column or use the key directly
             if where_clause:
                 where_clause += " AND "
