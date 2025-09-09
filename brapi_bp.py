@@ -2393,22 +2393,37 @@ def get_observation_by_reference_id(reference_id):
         
 @brapi_bp.route('observationunits')
 def get_observationunits():
+    query_parameters = request.args.to_dict()
+    
+    # convert all keys to upper case to ignore case sensitivity
+    query_parameters = dict(map(lambda x: (x[0].upper(), x[1]), query_parameters.items()))
+    
     res_context = None
     res_datafiles = []
     res_status = []
 
+    # set default pagination variables
+    res_page_size = 1000
+    res_current_page = 0
+
     # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+    if "PAGESIZE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGESIZE"])):
+            res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+    if "CURRENTPAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["CURRENTPAGE"])):
+            res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+    if "PAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGE"])):
+            res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
 
     # Construct the WHERE clause based on query parameters
     where_clause = ""
-    query_parameters = request.args.to_dict()
     for key, value in query_parameters.items():
-        if key != 'pageSize' and key != 'currentPage' and key != 'page':
+        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'PAGE':
             if where_clause:
                 where_clause += " AND "
-            where_clause += f'"{key.upper()}" = \'{value}\''
+            where_clause += f'"{key}" = \'{value}\''
     
     observationunits = []
     
@@ -2426,15 +2441,14 @@ def get_observationunits():
                 sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","STUDYDBID","STUDYNAME" FROM V012_OBSERVATION_UNITS_BRAPI"""
                 if where_clause:
                     sql += f" WHERE {where_clause}"
-                print (sql)
                 sql += f""" ORDER BY "OBSERVATIONUNITDBID" OFFSET {res_page_size * res_current_page} ROWS FETCH NEXT {res_page_size} ROWS ONLY"""
                 for r in cursor.execute(sql):
                     observationunit = {
-                        'observationUnitDbId': r[0], 
+                        'observationUnitDbId': str(r[0]), 
                         'additionalInfo': r[1], 
-                        'germplasmDbId': r[2], 
+                        'germplasmDbId': str(r[2]), 
                         'observations': [], 
-                        'studyDbId': r[3], 
+                        'studyDbId': str(r[3]), 
                         'studyName': r[4], 
                     }
                     observationunits.append(observationunit)
@@ -2451,18 +2465,17 @@ def get_observationunits():
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
                     sql += f" WHERE {where_clause}"
-                    print(sql)
                     for r in cursor.execute(sql):
-                        observationunitDbId = r[0]
+                        observationunitDbId = str(r[0])
                         observation = {
-                            "observationDbId": r[0], 
+                            "observationDbId": str(r[0]), 
                             "additionalInfo": r[1], 
-                            "germplasmDbId": r[2], 
+                            "germplasmDbId": str(r[2]), 
                             "observationTimeStamp": r[3], 
-                            "observationUnitDbId": r[0], 
-                            "observationVariableDbId": r[4], 
+                            "observationUnitDbId": str(r[0]), 
+                            "observationVariableDbId": str(r[4]), 
                             "observationVariableName": r[5], 
-                            "studyDbId": r[6], 
+                            "studyDbId": str(r[6]), 
                             "uploadedBy": r[7], 
                             "value": r[8], 
                         }
@@ -2521,11 +2534,11 @@ def get_observationunit_by_reference_id(reference_id):
                 if len(results) > 0:
                     result = results[0]
                     observationunit = {
-                        'observationUnitDbId': result[0], 
+                        'observationUnitDbId': str(result[0]), 
                         'additionalInfo': result[1], 
-                        'germplasmDbId': result[2], 
+                        'germplasmDbId': str(result[2]), 
                         'observations': [], 
-                        'studyDbId': result[3], 
+                        'studyDbId': str(result[3]), 
                         'studyName': result[4], 
                     }
                 else:
@@ -2542,14 +2555,14 @@ def get_observationunit_by_reference_id(reference_id):
                     sql += f" WHERE {where_clause}"
                     for r in cursor.execute(sql):
                         observation = {
-                            "observationDbId": r[0], 
+                            "observationDbId": str(r[0]), 
                             "additionalInfo": r[1], 
-                            "germplasmDbId": r[2], 
+                            "germplasmDbId": str(r[2]), 
                             "observationTimeStamp": r[3], 
-                            "observationUnitDbId": r[0], 
-                            "observationVariableDbId": r[4], 
+                            "observationUnitDbId": str(r[0]), 
+                            "observationVariableDbId": str(r[4]), 
                             "observationVariableName": r[5], 
-                            "studyDbId": r[6], 
+                            "studyDbId": str(r[6]), 
                             "uploadedBy": r[7], 
                             "value": r[8], 
                         }
