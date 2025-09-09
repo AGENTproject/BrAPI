@@ -1683,29 +1683,40 @@ def get_scale_by_reference_id(reference_id):
     
 @brapi_bp.route('/methods')
 def get_methods():
-    methodDbId = request.args.get('methodDbId')
-    if methodDbId:
-        method = None
+    query_parameters = request.args.to_dict()
     
+    # convert all keys to upper case to ignore case sensitivity
+    query_parameters = dict(map(lambda x: (x[0].upper(), x[1]), query_parameters.items()))
+        
     res_context = None
     res_datafiles = []
     res_status = []
 
+    # set default pagination variables
+    res_page_size = 1000
+    res_current_page = 0
+
     # Get page size and page number from query parameters
-    res_page_size = max(int(request.args.get('pageSize', 1000)), 1)
-    res_current_page = max(int(request.args.get('currentPage', request.args.get('page', 0))), 0)
+    if "PAGESIZE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGESIZE"])):
+            res_page_size = max(int(query_parameters["PAGESIZE"]), 1)
+    if "CURRENTPAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["CURRENTPAGE"])):
+            res_current_page = max(int(query_parameters["CURRENTPAGE"]), res_current_page)
+    if "PAGE" in list(query_parameters.keys()):
+        if is_int((query_parameters["PAGE"])):
+            res_current_page = max(int(query_parameters["PAGE"]), res_current_page)
 
     # Construct the WHERE clause based on query parameters
     where_clause = ""
-    query_parameters = request.args.to_dict()
     for key, value in query_parameters.items():
-        if key not in ['pageSize', 'currentPage', 'page']:
+        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'page':
             if where_clause:
                 where_clause += " AND "
-            if key == 'methodDbId':
-                 where_clause += f'UPPER(TRIM("METHODDBID")) = UPPER(TRIM(\'{value}\'))'
-            else:
+            if is_number(value):
                  where_clause += f'"{key}" = \'{value}\''
+            else:
+                where_clause +=  f'"{key}" = \'{value}\''
 
     methods = []
     try:
