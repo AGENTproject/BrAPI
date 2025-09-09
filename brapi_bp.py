@@ -1735,7 +1735,7 @@ def get_methods():
                 cursor.execute(sql)
                 for r in cursor.fetchall():
                     method = {
-                        'methodDbId': r[0],
+                        'methodDbId': str(r[0]),
                         'methodName': r[1],
                         'bibliographicalReference': r[2],
                         'description': r[3],
@@ -1787,7 +1787,7 @@ def get_method_by_reference_id(reference_id):
                 if len(results) > 0:
                     result = results[0]
                     method = {
-                        'methodDbId': result[0],
+                        'methodDbId': str(result[0]),
                         'methodName': result[1],
                         'bibliographicalReference': result[2],
                         'description': result[3],
