@@ -1,66 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BrAPI - AGENT</title>
-  </head>
-  <body>
-    <h1>BrAPI Agent - endpoints</h1>
-    <ul>
-      <li>
-        <em>/samples</em> - retrieve a list of all of the samples, e.g. 
-        <a href="/genotyping/brapi/v2/samples"
-          >/genotyping/brapi/v2/samples</a
-        >
-      </li>
-      <li>
-        <em>/samples/reference_id</em> - retrieve a sample searched by
-        referenceID(ex biosample id: SAMEA*), e.g.
-        <a href="/genotyping/brapi/v2/samples/SAMEA111493800"
-
-          >/genotyping/brapi/v2/samples/SAMEA111493800</a
-        >
-      </li>
-      <li>
-        <em>/callsets</em> - retrieve a list of all callsets, e.g.
-        <a href="/genotyping/brapi/v2/callsets"
-          >/genotyping/brapi/v2/callsets</a
-        >
-      </li>
-      <li>
-        <em>/callsets/reference_id</em> - retrieve a callset searched by
-        referenceID, e.g.
-        <a href="/genotyping/brapi/v2/callsets/SAMEA114474862"
-          >/genotyping/brapi/v2/callsets/SAMEA114474862</a
-        >
-      </li>
-      <li>
-        <em>/attributes</em> - retrieve a list of all attributes, e.g.
-        <a href="/genotyping/brapi/v2/attributes"
-          >/genotyping/brapi/v2/attributes</a
-        >
-      </li>
-      <li>
-        <em>/attributes/reference_id</em> - retrieve a attribute searched by
-        referenceID(ex ATTRIBUTEDBID:), e.g.
-        <a href="/genotyping/brapi/v2/callsets/10352"
-          >/genotyping/brapi/v2/callsets/10352</a
-        >
-      </li>
-      <li>
-        <em>/attributevalues</em> - retrieve a list of all attributevalues, e.g.
-        <a href="/genotyping/brapi/v2/attributevalues"
-          >/genotyping/brapi/v2/attributevalues</a
-        >
-      </li>
-      <li>
-        <em>/attributevalues/reference_id</em> - retrieve a attributevalue searched by
-        referenceID(ex GERMPLASMDBID:), e.g.
-        <a href="/genotyping/brapi/v2/callsets/121888"
-          >/genotyping/brapi/v2/callsets/121888</a
-        >
-      </li>
-    </ul>
-  </body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>BrAPI - AGENT</title>
+	</head>
+	<body>
+		<div id="output" class="content markdown-body"><h1>AGENT BrAPI Implementation</h1>
+			<h2>What is BrAPI?</h2>
+			<p>The Breeding API (<a href=https://brapi.org/>BrAPI</a>) Project is an effort to enable interoperability among agricultural databases and tools. BrAPI is a standardized RESTful web service API specification for exchanging scientific data. This community driven standard is free to be used by anyone interested in agricultural and scientific data management.</p>
+			<h2>Source Code</h2>
+			<p>The source code for these dedicated endpoints is hosted in a private GitHub repository: <a href=https://github.com/AGENTproject/BrAPI>AGENTproject/BrAPI</a></p>
+			<h2>BrAPI Documentation</h2>
+			<h3>BrAPI Core</h3>
+			<p><a href=https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification#brapi-core></a></p>
+			<p>The BrAPI Core module contains high level entities used for organization and management. This includes Programs, Trials, Studies, Locations, People, and Lists</p>
+			<p>V2.1 - <a href=https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification/BrAPI-Core>GitHub</a> - <a href=https://app.swaggerhub.com/apis/PlantBreedingAPI/BrAPI-Core/2.1>SwaggerHub</a> - <a href=https://brapicore21.docs.apiary.io>Apiary</a></p>
+			<h3>BrAPI Phenotyping</h3>
+			<p><a href=https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification#brapi-phenotyping></a></p>
+			<p>The BrAPI Phenotyping module contains entities related to phenotypic observations. This includes Observation Units, Observations, Observation Variables, Traits, Scales, Methods, and Images</p>
+			<p>V2.1 - <a href=https://github.com/plantbreeding/API/tree/brapi-V2.1/Specification/BrAPI-Phenotyping>GitHub</a> - <a href=https://app.swaggerhub.com/apis/PlantBreedingAPI/BrAPI-Phenotyping/2.1>SwaggerHub</a> - <a href=https://brapiphenotyping21.docs.apiary.io>Apiary</a></p>
+			<h3>BrAPI Genotyping</h3>
+			<p><a href=https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification#brapi-genotyping></a></p>
+			<p>The BrAPI Genotyping module contains entities related to genotyping analysis. This includes Samples, Markers, Variant Sets, Variants, Call Sets, Calls, References, Reads, and Vendor Orders</p>
+			<p>V2.1 - <a href=https://github.com/plantbreeding/API/tree/brapi-V2.1/Specification/BrAPI-Genotyping>GitHub</a> - <a href=https://app.swaggerhub.com/apis/PlantBreedingAPI/BrAPI-Genotyping/2.1>SwaggerHub</a> - <a href=https://brapigenotyping21.docs.apiary.io>Apiary</a></p>
+			<h3>BrAPI Germplasm</h3>
+			<p><a href=https://github.com/plantbreeding/BrAPI/tree/brapi-V2.1/Specification#brapi-germplasm></a></p>
+			<p>The BrAPI Germplasm module contains entities related to germplasm management. This includes Germplasm, Germplasm Attributes, Seed Lots, Crosses, Pedigree, and Progeny</p>
+			<p>V2.1 - <a href=https://github.com/plantbreeding/API/tree/brapi-V2.1/Specification/BrAPI-Germplasm>GitHub</a> - <a href=https://app.swaggerhub.com/apis/PlantBreedingAPI/BrAPI-Germplasm/2.1>SwaggerHub</a> - <a href=https://brapigermplasm21.docs.apiary.io>Apiary</a></p>
+			<h2>Endpoints</h2>
+			<h3>BrAPI-Core</h3>
+			<ul>
+				<li>
+					<em>/serverinfo</em>
+					 - retrieve server information, e.g. 
+					<a href="/genotyping/brapi/v2/serverinfo">
+						/genotyping/brapi/v2/serverinfo
+					</a>
+				</li>
+				<li>
+					<em>/studies</em>
+					 - retrieve a list of all of the studies, e.g. 
+					<a href="/genotyping/brapi/v2/studies">
+						/genotyping/brapi/v2/studies
+					</a>
+				</li>
+				<li>
+					<em>/studies/{studyDbId}</em>
+					- retrieve a study searched by studyDbId, e.g.
+					<a href="/genotyping/brapi/v2/studies/57143">
+						/genotyping/brapi/v2/studies/57143
+					</a>
+				</li>
+			</ul>
+			<h3>BrAPI-Phenotyping</h3>
+			<ul>
+				<li>
+					<em>/methods</em>
+					 - retrieve a list of all of the methods, e.g. 
+					<a href="/genotyping/brapi/v2/methods">
+						/genotyping/brapi/v2/methods
+					</a>
+				</li>
+				<li>
+					<em>/methods/{methodDbId}</em>
+					- retrieve a method searched by methodDbId, e.g.
+					<a href="/genotyping/brapi/v2/methods/11259">
+						/genotyping/brapi/v2/methods/11259
+					</a>
+				</li>
+				<li>
+					<em>/variables</em>
+					 - retrieve a list of all of the observation variables, e.g. 
+					<a href="/genotyping/brapi/v2/variables">
+						/genotyping/brapi/v2/variables
+					</a>
+				</li>
+				<li>
+					<em>/variables/{observationVariableDbId}</em>
+					- retrieve an observation variable searched by observationVariableDbId, e.g.
+					<a href="/genotyping/brapi/v2/variables/11259">
+						/genotyping/brapi/v2/variables/11259
+					</a>
+				</li>
+				<li>
+					<em>/observations</em>
+					 - retrieve a list of all of the observations, e.g. 
+					<a href="/genotyping/brapi/v2/observations">
+						/genotyping/brapi/v2/observations
+					</a>
+				</li>
+				<li>
+					<em>/observations/{observationDbId}</em>
+					- retrieve an observation searched by observationDbId, e.g.
+					<a href="/genotyping/brapi/v2/observations/1376649">
+						/genotyping/brapi/v2/observations/1376649
+					</a>
+				</li>
+				<li>
+					<em>/observationunits</em>
+					 - retrieve a list of all of the observation units, e.g. 
+					<a href="/genotyping/brapi/v2/observationunits">
+						/genotyping/brapi/v2/observationunits
+					</a>
+				</li>
+				<li>
+					<em>/observationunits/{observationUnitDbId}</em>
+					- retrieve an observation unit searched by observationUnitDbId, e.g.
+					<a href="/genotyping/brapi/v2/observationunits/1376649">
+						/genotyping/brapi/v2/observationunits/1376649
+					</a>
+				</li>
+				<li>
+					<em>/scales</em>
+					 - retrieve a list of all of the scales, e.g. 
+					<a href="/genotyping/brapi/v2/scales">
+						/genotyping/brapi/v2/scales
+					</a>
+				</li>
+				<li>
+					<em>/scales/{scaleDbId}</em>
+					- retrieve a scale searched by scaleDbId, e.g.
+					<a href="/genotyping/brapi/v2/scales/11259">
+						/genotyping/brapi/v2/scales/11259
+					</a>
+				</li>
+				<li>
+					<em>/traits</em>
+					 - retrieve a list of all of the traits, e.g. 
+					<a href="/genotyping/brapi/v2/traits">
+						/genotyping/brapi/v2/traits
+					</a>
+				</li>
+				<li>
+					<em>/traits/{traitDbId}</em>
+					- retrieve a trait searched by traitDbId, e.g.
+					<a href="/genotyping/brapi/v2/traits/11981">
+						/genotyping/brapi/v2/traits/11981
+					</a>
+				</li>
+			</ul>
+			<h3>BrAPI-Genotyping</h3>
+			<ul>
+				<li>
+					<em>/samples</em>
+					 - retrieve a list of all of the samples, e.g. 
+					<a href="/genotyping/brapi/v2/samples">
+						/genotyping/brapi/v2/samples
+					</a>
+				</li>
+				<li>
+					<em>/samples/{sampleDbId}</em>
+					- retrieve a sample searched by sampleDbId, e.g.
+					<a href="/genotyping/brapi/v2/samples/3135289">
+						/genotyping/brapi/v2/samples/3135289
+					</a>
+				</li>
+				<li>
+					<em>/callsets</em>
+					 - retrieve a list of all of the callsets, e.g. 
+					<a href="/genotyping/brapi/v2/callsets">
+						/genotyping/brapi/v2/callsets
+					</a>
+				</li>
+				<li>
+					<em>/callsets/{callSetDbId}</em>
+					- retrieve a callset searched by callSetDbId, e.g.
+					<a href="/genotyping/brapi/v2/callsets/SAMEA10401783">
+						/genotyping/brapi/v2/callsets/SAMEA10401783
+					</a>
+				</li>
+			</ul>
+			<h3>BrAPI-Germplasm</h3>
+			<ul>
+				<li>
+					<em>/attributes</em>
+					 - retrieve a list of all of the attributes, e.g. 
+					<a href="/genotyping/brapi/v2/attributes">
+						/genotyping/brapi/v2/attributes
+					</a>
+				</li>
+				<li>
+					<em>/attributes/{attributeDbId}</em>
+					- retrieve an attribute searched by attributeDbId, e.g.
+					<a href="/genotyping/brapi/v2/attributes/11259">
+						/genotyping/brapi/v2/attributes/11259
+					</a>
+				</li>
+				<li>
+					<em>/attributevalues</em>
+					 - retrieve a list of all of the attribute values, e.g. 
+					<a href="/genotyping/brapi/v2/attributevalues">
+						/genotyping/brapi/v2/attributevalues
+					</a>
+				</li>
+				<li>
+					<em>/attributevalues/{attributeValueDbId}</em>
+					- retrieve an attribute value searched by attributeValueDbId, e.g.
+					<a href="/genotyping/brapi/v2/attributevalues/1376649">
+						/genotyping/brapi/v2/attributevalues/1376649
+					</a>
+				</li>
+				<li>
+					<em>/germplasm</em>
+					 - retrieve a list of all of the germplasm, e.g. 
+					<a href="/genotyping/brapi/v2/germplasm">
+						/genotyping/brapi/v2/germplasm
+					</a>
+				</li>
+				<li>
+					<em>/germplasm/{germplasmDbId}</em>
+					- retrieve a germplasm searched by germplasmDbId, e.g.
+					<a href="/genotyping/brapi/v2/germplasm/AW_77936">
+						/genotyping/brapi/v2/germplasm/AW_77936
+					</a>
+				</li>
+			</ul>
+		</div>
+	</body>
 </html>
