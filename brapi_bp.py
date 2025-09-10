@@ -508,8 +508,6 @@ def get_germplasm():
             where_clause += f'"{column_name}" = :{key}'  # Use mapped column name
             bind_variables[key] = value  # Assign bind variable value
 
-    print(where_clause)
-
     germplasms = []
     
     res_total_count = 0  # Initialize to prevent unbound errors
@@ -521,7 +519,6 @@ def get_germplasm():
                 count_sql = "SELECT COUNT(*) FROM V006_ACCESSION_BRAPI"
                 if where_clause:
                     count_sql += f" WHERE {where_clause}"
-                print(count_sql, bind_variables)
                 cursor.execute(count_sql, bind_variables)
                 res_total_count = cursor.fetchone()[0]  # Fetch the total count
 
@@ -832,7 +829,6 @@ def get_sample_by_reference_id(reference_id):
                     FROM mv_brapi_samples
                     WHERE "sampleDbId" = :reference_id
                 """
-                print(sql)
                 # Execute query with bind variable
                 cursor.execute(sql, {'reference_id': reference_id})
                 results = cursor.fetchall()
@@ -1433,8 +1429,6 @@ def get_callsets():
             else:
                  where_clause += f'"{key}" = \'{value}\''
 
-    print(where_clause)
-
     callSets = []
     try:
         with pool.acquire() as connection:
@@ -1938,7 +1932,6 @@ def get_trait_by_reference_id(reference_id):
             with connection.cursor() as cursor:
                 sql = """SELECT "TRAITDBID", "TRAITNAME", "ADDITIONALINFO", "MAINABBREVIATION", "STATUS", "TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
                 sql += f""" WHERE "TRAITDBID" = '{reference_id}' """
-                print(sql)
                 cursor.execute(sql)
                 results = cursor.fetchall()
                 if len(results) > 0:
@@ -2197,7 +2190,6 @@ def get_variable_by_reference_id(reference_id):
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "METHODDBID", "METHODNAME", "BIBLIOGRAPHICALREFERENCE", "DESCRIPTION" FROM V016_METHODS_BRAPI"""
                     sql += f" WHERE {where_clause}"
-                    print (sql)
                     for r in cursor.execute(sql):
                         method = {
                             "methodDbId": str(r[0]), 
@@ -2216,7 +2208,6 @@ def get_variable_by_reference_id(reference_id):
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "SCALEDBID","SCALENAME" FROM V017_SCALE_BRAPI"""
                     sql += f" WHERE {where_clause}"
-                    print (sql)
                     for r in cursor.execute(sql):
                         scale = {
                             "scaleDbId": str(r[0]), 
@@ -2233,7 +2224,6 @@ def get_variable_by_reference_id(reference_id):
                 with connection.cursor() as cursor:
                     sql = f"""SELECT "TRAITDBID","TRAITNAME","ADDITIONALINFO","MAINABBREVIATION","STATUS","TRAITDESCRIPTION" FROM V015_TRAITS_BRAPI"""
                     sql += f" WHERE {where_clause}"
-                    print (sql)
                     for r in cursor.execute(sql):
                         trait = {
                             "traitDbId": str(r[0]), 
@@ -2386,7 +2376,6 @@ def get_observation_by_reference_id(reference_id):
             with connection.cursor() as cursor:
                 sql = """SELECT "OBSERVATIONUNITDBID","ADDITIONALINFO","GERMPLASMDBID","OBSERVATIONTIMESTAMP","OBSERVATIONVARIABLEDBID","OBSERVATIONVARIABLENAME","STUDYDBID","UPLOADEDBY","VALUE" FROM V013_OBSERVATION_BRAPI"""
                 sql += f""" WHERE "OBSERVATIONUNITDBID" = '{reference_id}' """
-                print(sql)
                 cursor.execute(sql)
                 results = cursor.fetchall()
                 if len(results) > 0:
