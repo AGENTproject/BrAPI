@@ -1264,7 +1264,7 @@ def get_attributevalues():
     # Construct the WHERE clause based on query parameters
     where_clause = ""
     for key, value in query_parameters.items():
-        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'page':
+        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'PAGE':
             if where_clause:
                 where_clause += " AND "
             if is_number(value):
@@ -1716,7 +1716,7 @@ def get_methods():
     # Construct the WHERE clause based on query parameters
     where_clause = ""
     for key, value in query_parameters.items():
-        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'page':
+        if key != 'PAGESIZE' and key != 'CURRENTPAGE' and key != 'PAGE':
             if where_clause:
                 where_clause += " AND "
             if is_number(value):
