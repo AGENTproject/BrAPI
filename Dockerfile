@@ -7,15 +7,15 @@ RUN apt-get update && \
     mkdir -p /opt/oracle
 	
 # Add Instant Client directly
-COPY instantclient-basic-linux.x64-23.7.0.25.01.zip /opt/oracle/
-RUN unzip /opt/oracle/instantclient-basic-linux.x64-23.7.0.25.01.zip -d /opt/oracle/ && \
-    rm /opt/oracle/instantclient-basic-linux.x64-23.7.0.25.01.zip
+COPY instantclient-basic-linux.x64-23.26.1.0.0.zip /opt/oracle/
+RUN unzip /opt/oracle/instantclient-basic-linux.x64-23.26.1.0.0.zip -d /opt/oracle/ && \
+    rm /opt/oracle/instantclient-basic-linux.x64-23.26.1.0.0.zip
 
 
 # Environment variables for Oracle Instant Client
-ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_7
-ENV ORACLE_HOME=/opt/oracle/instantclient_23_7
-ENV PATH=$PATH:/opt/oracle/instantclient_23_7
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_26
+ENV ORACLE_HOME=/opt/oracle/instantclient_23_26
+ENV PATH=$PATH:/opt/oracle/instantclient_23_26
 
 
 
